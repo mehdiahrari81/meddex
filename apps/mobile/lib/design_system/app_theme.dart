@@ -60,31 +60,7 @@ abstract final class AppTheme {
         fontWeight: FontWeight.w600,
       ),
     );
-    // Make presses visible while keeping each button's existing colors.
-    final pressedOverlay = WidgetStateProperty.resolveWith<Color?>((states) {
-      if (states.contains(WidgetState.pressed)) {
-        return colorScheme.onSurface.withValues(
-          alpha: brightness == Brightness.light ? 0.16 : 0.22,
-        );
-      }
-      return null;
-    });
     return base.copyWith(
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom().copyWith(
-          overlayColor: pressedOverlay,
-        ),
-      ),
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom().copyWith(
-          overlayColor: pressedOverlay,
-        ),
-      ),
-      iconButtonTheme: IconButtonThemeData(
-        style: IconButton.styleFrom().copyWith(
-          overlayColor: pressedOverlay,
-        ),
-      ),
       textTheme: textTheme,
       appBarTheme: AppBarTheme(
         elevation: 0,
@@ -128,7 +104,7 @@ abstract final class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.medium),
           ),
-        ).copyWith(overlayColor: pressedOverlay),
+        ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
@@ -140,7 +116,7 @@ abstract final class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.medium),
           ),
-        ).copyWith(overlayColor: pressedOverlay),
+        ),
       ),
       chipTheme: base.chipTheme.copyWith(
         shape: RoundedRectangleBorder(

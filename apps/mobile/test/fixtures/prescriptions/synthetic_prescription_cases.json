@@ -1,0 +1,54 @@
+{
+  "notice": "Entirely synthetic Module 3 QA fixtures; no real patient data.",
+  "cases": [
+    {
+      "id": "printed_multiple",
+      "kind": "printed",
+      "text": "Amoxicillin 500 mg\n1 cap PO TID x 7 days\n\nParacetamol 500 mg\n1 tab PRN pain"
+    },
+    {
+      "id": "blurry_simulated_ocr",
+      "kind": "blurry",
+      "text": "Amoxici1lin 5O mg\n1 cap P0 T1D"
+    },
+    {
+      "id": "rotated",
+      "kind": "rotated_metadata",
+      "rotation_degrees": 90,
+      "text": "Ibuprofen 200 mg\n1 tablet with food"
+    },
+    {
+      "id": "unusual_spacing",
+      "kind": "printed",
+      "text": "Metformin     500mg\n  1 tab   BD"
+    },
+    {
+      "id": "missing_strength_duration",
+      "kind": "printed",
+      "text": "Amlodipine\n1 tablet OD"
+    },
+    {
+      "id": "ambiguous_abbreviation",
+      "kind": "printed",
+      "text": "Examplemed 5 mg\n1 drop OD"
+    },
+    {
+      "id": "numeric_safety",
+      "kind": "printed",
+      "text": "Examplemed 5 mg\nExamplemed 50 mg\nExamplemed 500 mg\nExamplemed .5 mg"
+    },
+    {
+      "id": "mixed_script",
+      "kind": "printed",
+      "text": "Amoxicillin 500 mg\nکھانے کے بعد"
+    },
+    {
+      "id": "multi_page",
+      "kind": "pages",
+      "pages": ["Amoxicillin 500 mg", "Paracetamol 500 mg"]
+    },
+    {"id": "no_text", "kind": "blank", "text": ""},
+    {"id": "manual_entry", "kind": "manual", "medicine": "Syntheticmed"},
+    {"id": "barcode", "kind": "barcode", "format": "ean13", "value": "1234567890128"}
+  ]
+}

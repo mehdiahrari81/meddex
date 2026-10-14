@@ -1,0 +1,16 @@
+
+# Flutter and Dart generated files
+.dart_tool/
+build/
+.flutter-plugins-dependencies
+
+# Android build cache
+.gradle/
+
+# iOS generated dependencies
+Pods/
+.symlinks/
+
+# macOS
+.DS_Store
+

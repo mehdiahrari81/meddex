@@ -1,0 +1,25 @@
+digraph MediExplain {
+
+ graph [bgcolor="#FFFFFF", fontname="Arial", fontsize=22, fontcolor="#0F2942", labelloc=t, labeljust=c, pad=0.35, nodesep=0.4, ranksep=0.52, splines=polyline, dpi=180];
+ node [shape=box, style="rounded,filled", fillcolor="#EFF6FB", color="#B9CEDF", fontname="Arial", fontsize=14, fontcolor="#17334B", margin="0.18,0.13", penwidth=1.3];
+ edge [color="#617D92", fontname="Arial", fontsize=11, fontcolor="#405E75", arrowsize=0.75, penwidth=1.3];
+
+ graph [label="AI assistant | Source facts before explanation", rankdir=TB];
+ request [label="Signed-in user question\nSelected stable medicine identity", fillcolor="#DDF4F0", color="#6FBBAE"];
+ safety [label="Request checks\nContext present? Treatment-change / injection request?"];
+ retrieval [label="Retrieve available MedicalFact records\nStructured fact types; bounded token-overlap fallback"];
+ evidence [label="Selected facts + stored provenance\nProvider · section · version · citation"];
+ generation [label="Optional configured + enabled model\nBounded context · requested language/mode\nStructured JSON response", fillcolor="#FFF4DF", color="#D7B56F"];
+ validate [label="Targeted output validation\nShape · source IDs · names · numbers/units\nURLs · safety checks · selected Urdu concepts"];
+ accepted [label="AI explanation\nApp-built source references", fillcolor="#DDF4F0", color="#6FBBAE"];
+ original [label="Original source\nClear fallback when generation unavailable\nor rejected", fillcolor="#E9E6FA", color="#AAA0D2"];
+ limited [label="Limited response\nMissing evidence / unsafe request\nNo invented answer", fillcolor="#FBECEE", color="#D5A0A6"];
+ request -> safety -> retrieval -> evidence -> generation -> validate;
+ safety -> limited [label="request limited", constraint=false];
+ retrieval -> limited [label="no supported facts", constraint=false];
+ evidence -> original [label="model unavailable", style=dashed, constraint=false];
+ validate -> accepted [label="accepted"];
+ validate -> original [label="rejected", style=dashed];
+ {rank=same; accepted; original;}
+
+}

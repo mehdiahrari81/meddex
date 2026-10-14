@@ -1,0 +1,62 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: mediexplain
+      POSTGRES_USER: mediexplain
+      POSTGRES_PASSWORD: local-development-only
+    ports:
+      - "127.0.0.1:${MEDIEXPLAIN_DB_PORT:-5432}:5432"
+    volumes:
+      - mediexplain_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mediexplain"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./services/api
+    environment:
+      MEDIEXPLAIN_ENVIRONMENT: development
+      MEDIEXPLAIN_DATABASE_URL: postgresql+psycopg://mediexplain:local-development-only@postgres:5432/mediexplain
+      MEDIEXPLAIN_SECRET_KEY: local-development-secret-replace-for-production
+      MEDIEXPLAIN_ALLOWED_ORIGINS: '["http://localhost:3000", "http://127.0.0.1:3000"]'
+      MEDIEXPLAIN_SMTP_HOST: mailpit
+      MEDIEXPLAIN_SMTP_PORT: "1025"
+      MEDIEXPLAIN_SMTP_SECURITY: none
+    volumes:
+      - ./apps/mobile/assets/terminology:/opt/mediexplain/reference:ro
+    command: sh -c "alembic upgrade head && python -m app.cli import-reference --if-empty --path /opt/mediexplain/reference/starter_dataset_v1.json && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "${MEDIEXPLAIN_API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/ready', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  admin:
+    build: ./apps/admin
+    environment:
+      MEDIEXPLAIN_API_URL: http://api:8000/api/v1
+      ADMIN_COOKIE_SECURE: "false"
+    ports:
+      - "127.0.0.1:${MEDIEXPLAIN_ADMIN_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  mailpit:
+    image: axllent/mailpit:v1
+    ports:
+      - "127.0.0.1:${MEDIEXPLAIN_MAIL_PORT:-8025}:8025"
+      - "127.0.0.1:${MEDIEXPLAIN_SMTP_PORT:-1025}:1025"
+
+volumes:
+  mediexplain_postgres:

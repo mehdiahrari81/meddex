@@ -1,0 +1,12 @@
+{
+  "platform": "android",
+  "api_base_url": "http://127.0.0.1:8000/api/v1/",
+  "app_environment": "development",
+  "flutter_version": "3.44.5",
+  "notes": "Local demo; release-optimized; development environment; not a store-signed production release.",
+  "files": [
+    "MediExplain-arm64-v8a.apk",
+    "MediExplain-armeabi-v7a.apk",
+    "MediExplain-x86_64.apk"
+  ]
+}

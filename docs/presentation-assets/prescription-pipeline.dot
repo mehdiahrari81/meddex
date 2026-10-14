@@ -1,0 +1,25 @@
+digraph MediExplain {
+
+ graph [bgcolor="#FFFFFF", fontname="Arial", fontsize=22, fontcolor="#0F2942", labelloc=t, labeljust=c, pad=0.35, nodesep=0.4, ranksep=0.52, splines=polyline, dpi=180];
+ node [shape=box, style="rounded,filled", fillcolor="#EFF6FB", color="#B9CEDF", fontname="Arial", fontsize=14, fontcolor="#17334B", margin="0.18,0.13", penwidth=1.3];
+ edge [color="#617D92", fontname="Arial", fontsize=11, fontcolor="#405E75", arrowsize=0.75, penwidth=1.3];
+
+ graph [label="Prescription | Capture to confirmed information", rankdir=TB];
+ capture [label="1  Capture / import image\nOr start with manual entry", fillcolor="#DDF4F0", color="#6FBBAE"];
+ image [label="2  Private preview + preprocessing\nOrientation · crop/rotate · bounded resize"];
+ ocr [label="3  On-device Latin OCR\nText + regions; not a medical source"];
+ parse [label="4  Parse candidate fields\nName · strength · form · instructions"];
+ review [label="5  User review and correction\nOriginal text remains distinguishable", fillcolor="#FFF4DF", color="#D7B56F"];
+ decision [label="Medicine name\nexplicitly confirmed?", shape=diamond, style=filled, fillcolor="#FFF4DF", color="#D7B56F", margin=0.12];
+ unresolved [label="Keep unresolved / reject\nNo lookup-ready identity", fillcolor="#FBECEE", color="#D5A0A6"];
+ ready [label="6  Confirmed record / lookup-ready item\nUser confirmation is transcription acceptance", fillcolor="#DDF4F0", color="#6FBBAE"];
+ downstream [label="Compare medicine candidates\nRead sources · optionally create personal plan"];
+ capture -> image -> ocr -> parse -> review -> decision;
+ capture -> review [label="manual entry", style=dashed, constraint=false];
+ decision -> ready [label="yes"];
+ decision -> unresolved [label="no / ambiguous"];
+ unresolved -> review [label="correct", style=dashed, constraint=false];
+ ready -> downstream;
+ {rank=same; unresolved; ready;}
+
+}

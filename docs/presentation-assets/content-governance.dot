@@ -1,0 +1,24 @@
+digraph MediExplain {
+
+ graph [bgcolor="#FFFFFF", fontname="Arial", fontsize=22, fontcolor="#0F2942", labelloc=t, labeljust=c, pad=0.35, nodesep=0.4, ranksep=0.52, splines=polyline, dpi=180];
+ node [shape=box, style="rounded,filled", fillcolor="#EFF6FB", color="#B9CEDF", fontname="Arial", fontsize=14, fontcolor="#17334B", margin="0.18,0.13", penwidth=1.3];
+ edge [color="#617D92", fontname="Arial", fontsize=11, fontcolor="#405E75", arrowsize=0.75, penwidth=1.3];
+
+ graph [label="Content governance | Review before distribution", rankdir=TB];
+ draft [label="Editor drafts or revises content\nStable ID · reason · source metadata", fillcolor="#E9E6FA", color="#AAA0D2"];
+ review [label="Submit revision for independent review\nAuthor cannot approve their own current revision"];
+ approve [label="Reviewer approves permitted revision\nPermissions checked by API"];
+ published [label="Authorized publication\nPublished revision recorded", fillcolor="#DDF4F0", color="#6FBBAE"];
+ release [label="Complete validated reference release\nIndividual editorial publication alone\ndoes not replace the mobile corpus", fillcolor="#FFF4DF", color="#D7B56F"];
+ download [label="API exposes release version + dataset"];
+ install [label="Mobile validates and installs atomically\nKeep prior valid copy on failure\nPreserve stable saved/progress links", fillcolor="#DDF4F0", color="#6FBBAE"];
+ audit [label="Across the lifecycle\nNumbered revisions · actor/reason\nReview state · audit events", shape=note];
+ retired [label="Later lifecycle\nDeprecated / archived", fillcolor="#F2F4F7", color="#B7C3CD"];
+ draft -> review -> approve -> published -> release -> download -> install;
+ review -> draft [label="changes requested", style=dashed, constraint=false];
+ published -> retired [label="permitted transition"];
+ audit -> review [style=dashed, arrowhead=none, constraint=false];
+ {rank=same; review; audit;}
+ {rank=same; published; retired;}
+
+}

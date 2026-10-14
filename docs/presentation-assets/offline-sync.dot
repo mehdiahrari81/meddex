@@ -1,0 +1,29 @@
+digraph MediExplain {
+
+ graph [bgcolor="#FFFFFF", fontname="Arial", fontsize=22, fontcolor="#0F2942", labelloc=t, labeljust=c, pad=0.35, nodesep=0.4, ranksep=0.52, splines=polyline, dpi=180];
+ node [shape=box, style="rounded,filled", fillcolor="#EFF6FB", color="#B9CEDF", fontname="Arial", fontsize=14, fontcolor="#17334B", margin="0.18,0.13", penwidth=1.3];
+ edge [color="#617D92", fontname="Arial", fontsize=11, fontcolor="#405E75", arrowsize=0.75, penwidth=1.3];
+
+
+ graph [label="Offline design | Two separate update paths", rankdir=TB];
+ action [label="PERSONAL MUTATIONS\nUser action: save / learn / review", fillcolor="#DDF4F0", color="#6FBBAE", group=personal];
+ sqlite [label="Account-scoped local SQLite\nLocal result + persisted operation", shape=cylinder, group=personal];
+ outbox [label="Durable outbox\nEntity ID · idempotency key · retry state", group=personal];
+ gate [label="Signed in + permitted sync\nConnectivity / service available?", group=personal];
+ server [label="Authenticated owner-scoped API\nIdempotent writes → PostgreSQL", fillcolor="#DDF4F0", color="#6FBBAE", group=personal];
+ release [label="REFERENCE CONTENT\nReviewed complete release\nVersion + canonical dataset", fillcolor="#E9E6FA", color="#AAA0D2", group=reference];
+ fetch [label="Download when available", group=reference];
+ validation [label="Validate before installation\nSchema · IDs · relationships", group=reference];
+ commit [label="Transactional local import\nKeep previous release if invalid\nPreserve saved/progress references", group=reference];
+ privacy [label="Account boundary\nGuest and each account have separate files\nGuest transport disabled\nSensitive dose-history sync requires opt-in", shape=note, fillcolor="#FFF4DF", color="#D7B56F", group=reference];
+ action -> sqlite -> outbox -> gate -> server;
+ gate -> outbox [label="offline / retry later", style=dashed, constraint=false];
+ release -> fetch -> validation -> commit;
+ privacy -> server [style=dashed, arrowhead=none, constraint=false];
+ {rank=same; action; release;}
+ {rank=same; sqlite; fetch;}
+ {rank=same; outbox; validation;}
+ {rank=same; gate; commit;}
+ {rank=same; server; privacy;}
+ commit -> privacy [style=invis];
+}

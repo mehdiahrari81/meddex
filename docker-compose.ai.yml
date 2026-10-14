@@ -1,0 +1,7 @@
+services:
+  api:
+    environment:
+      MEDIEXPLAIN_AI_PROVIDER: ollama
+      MEDIEXPLAIN_AI_BASE_URL: http://host.docker.internal:11434
+      MEDIEXPLAIN_AI_MODEL: ${MEDIEXPLAIN_AI_MODEL:-qwen3:8b}
+      MEDIEXPLAIN_AI_TIMEOUT_SECONDS: "60"

@@ -1,0 +1,39 @@
+digraph MediExplain {
+
+ graph [bgcolor="#FFFFFF", fontname="Arial", fontsize=22, fontcolor="#0F2942", labelloc=t, labeljust=c, pad=0.35, nodesep=0.4, ranksep=0.52, splines=polyline, dpi=180];
+ node [shape=box, style="rounded,filled", fillcolor="#EFF6FB", color="#B9CEDF", fontname="Arial", fontsize=14, fontcolor="#17334B", margin="0.18,0.13", penwidth=1.3];
+ edge [color="#617D92", fontname="Arial", fontsize=11, fontcolor="#405E75", arrowsize=0.75, penwidth=1.3];
+
+ graph [label="Logical data model | Ownership and provenance", rankdir=TB];
+ user [label="User / local account workspace", fillcolor="#DDF4F0", color="#6FBBAE"];
+ rx [label="Prescription\nCapture + review state"];
+ item [label="PrescriptionItem\nFields + confirmation"];
+ plan [label="MedicationPlan\nPersonal instructions + status"];
+ schedule [label="MedicationSchedule\nTimezone + reminder times"];
+ event [label="DoseEvent\nLogical dose + revision"];
+ learning [label="Learning activity\nLesson progress · quiz attempt\nFlashcard review"];
+ identity [label="MedicationIdentity\nIngredients · identifiers · mappings", fillcolor="#FFF4DF", color="#D7B56F"];
+ fact [label="MedicalFact\nSection + source/version/citation", fillcolor="#FFF4DF", color="#D7B56F"];
+ governed [label="GovernedContent\nStable ID + lifecycle", fillcolor="#E9E6FA", color="#AAA0D2"];
+ revision [label="GovernedContentRevision\nNumber · author/reviewer · reason", fillcolor="#E9E6FA", color="#AAA0D2"];
+ note [label="Conceptual view, not full physical schema\nSQLite and PostgreSQL use related, distinct schemas\nDashed links represent workflow associations", shape=note, fillcolor="#F5F7FA", color="#BECAD5", fontsize=12];
+ user -> rx [label="1 : many"];
+ rx -> item [label="1 : many"];
+ user -> plan [label="1 : many"];
+ plan -> schedule [label="schedule"];
+ plan -> event [label="many actions"];
+ user -> learning [label="1 : many"];
+ identity -> fact [label="1 : many"];
+ governed -> revision [label="1 : many"];
+ item -> identity [label="confirmed lookup", style=dashed, constraint=false];
+ item -> plan [label="confirmed source snapshot", style=dashed, constraint=false];
+ {rank=same; rx; plan; learning;}
+ {rank=same; item; schedule; event;}
+ {rank=same; identity; governed;}
+ {rank=same; fact; revision;}
+ event -> identity [style=invis];
+ learning -> governed [style=invis];
+ fact -> note [style=invis];
+ revision -> note [style=invis];
+
+}

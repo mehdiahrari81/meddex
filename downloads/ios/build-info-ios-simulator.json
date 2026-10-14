@@ -1,0 +1,11 @@
+{
+  "platform": "ios-simulator",
+  "api_base_url": "http://127.0.0.1:8000/api/v1/",
+  "app_environment": "development",
+  "flutter_version": "3.44.5",
+  "source_commit": "5db3baea752674c1f357917e5de190388fede770",
+  "notes": "iOS Simulator only; architecture matches build host; not installable on an iPhone.",
+  "files": [
+    "MediExplain-ios-simulator-x86_64.zip"
+  ]
+}

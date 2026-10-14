@@ -1,0 +1,27 @@
+digraph MediExplain {
+
+ graph [bgcolor="#FFFFFF", fontname="Arial", fontsize=22, fontcolor="#0F2942", labelloc=t, labeljust=c, pad=0.35, nodesep=0.4, ranksep=0.52, splines=polyline, dpi=180];
+ node [shape=box, style="rounded,filled", fillcolor="#EFF6FB", color="#B9CEDF", fontname="Arial", fontsize=14, fontcolor="#17334B", margin="0.18,0.13", penwidth=1.3];
+ edge [color="#617D92", fontname="Arial", fontsize=11, fontcolor="#405E75", arrowsize=0.75, penwidth=1.3];
+
+ graph [label="MediExplain | System architecture", rankdir=TB];
+ mobile [label="Flutter mobile app\nLearning · reviewed capture · reminders", fillcolor="#DDF4F0", color="#6FBBAE"];
+ admin [label="Next.js admin portal\nEditorial review · imports · audit", fillcolor="#E9E6FA", color="#AAA0D2"];
+ local [label="Account-scoped SQLite\nReference content · personal records\nCaches · progress · outbox", shape=cylinder];
+ device [label="Device adapters\nLocal OCR · private images\nNotifications · voice"];
+ api [label="FastAPI service\nAuthentication · permissions\nValidation · provider orchestration", fillcolor="#0E766E", color="#0E766E", fontcolor=white];
+ postgres [label="PostgreSQL\nOwner-scoped records · reference data\nGovernance · provenance", shape=cylinder];
+ providers [label="Medicine source adapters\nRxNorm · DailyMed · MedlinePlus\nReviewed DRAP imports"];
+ model [label="Optional model service\nOllama: qwen3:8b\nOr compatible endpoint", fillcolor="#FFF4DF", color="#D7B56F"];
+ {rank=same; mobile; admin;}
+ {rank=same; local; device;}
+ {rank=same; postgres; providers; model;}
+ mobile -> local [label="local reads/writes", dir=both];
+ mobile -> device [label="platform access", dir=both];
+ mobile -> api [label="user requests + sync\nreference release downloads", minlen=2, dir=both];
+ admin -> api [label="separate admin session", minlen=2];
+ api -> postgres [label="persist / retrieve", dir=both];
+ api -> providers [label="identity + source facts", dir=both];
+ api -> model [label="selected facts / bounded answer", dir=both];
+
+}

@@ -1,0 +1,53 @@
+[project]
+name = "mediexplain-api"
+version = "0.1.0"
+description = "MediExplain versioned API foundation"
+requires-python = ">=3.12"
+dependencies = [
+  "alembic>=1.14,<2",
+  "cryptography>=45,<47",
+  "defusedxml>=0.7,<1",
+  "email-validator>=2.2,<3",
+  "fastapi>=0.115,<1",
+  "httpx>=0.28,<1",
+  "python-multipart>=0.0.20,<1",
+  "psycopg[binary]>=3.2,<4",
+  "pwdlib[argon2]>=0.2,<1",
+  "pydantic-settings>=2.7,<3",
+  "pyjwt>=2.10,<3",
+  "sqlalchemy>=2.0.36,<3",
+  "structlog>=25.1,<26",
+  "uvicorn[standard]>=0.34,<1",
+]
+
+[dependency-groups]
+dev = [
+  "mypy>=1.14,<2",
+  "pytest>=8.3,<9",
+  "pytest-cov>=6,<8",
+  "ruff>=0.9,<1",
+  "types-defusedxml>=0.7,<1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]

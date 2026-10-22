@@ -158,6 +158,21 @@ Paracetamol 500 mg
     expect(date.parse('No date written'), isNull);
     expect(date.parse('99/99/2026'), isNull);
   });
+
+  test(
+    'local fallback does not turn headings, patient names, or vitals into medicines',
+    () async {
+      final result = await parser.parse(
+        prescriptionId: 'rx',
+        pageNumber: 1,
+        rawText:
+            'Example Clinic\nDr. Synthetic\nPatient: Synthetic\nDate: 01/10/2026\nBP 120/80\nRx\nAmoxicillin 500mg\ntake 1 capsule\nFollow up next week',
+      );
+      expect(result.items, hasLength(1));
+      expect(result.items.single.rawMedicationText, 'Amoxicillin');
+      expect(result.items.single.sourceText, isNot(contains('Follow up')));
+    },
+  );
 }
 
 class _FakeAbbreviationResolver implements PrescriptionAbbreviationResolver {

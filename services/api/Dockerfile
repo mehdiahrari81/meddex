@@ -5,15 +5,19 @@ COPY --from=ghcr.io/astral-sh/uv:0.11.29 /uv /usr/local/bin/uv
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PATH="/app/.venv/bin:$PATH"
 WORKDIR /app
 
+ARG INSTALL_OCR=false
 COPY pyproject.toml uv.lock ./
+ENV UV_HTTP_TIMEOUT=120 UV_HTTP_RETRIES=5 UV_CONCURRENT_DOWNLOADS=4
 RUN --mount=type=cache,target=/root/.cache/uv \
-    UV_HTTP_TIMEOUT=120 UV_HTTP_RETRIES=5 UV_CONCURRENT_DOWNLOADS=4 \
-    uv sync --frozen --no-dev --no-install-project
+    if [ "$INSTALL_OCR" = "true" ]; then uv sync --frozen --no-dev --no-install-project --extra ocr; \
+    else uv sync --frozen --no-dev --no-install-project; fi
 COPY app ./app
 COPY alembic.ini ./
 COPY alembic ./alembic
 
-RUN useradd --create-home --uid 10001 mediexplain
+RUN useradd --create-home --uid 10001 mediexplain \
+    && mkdir -p /home/mediexplain/.cache/huggingface \
+    && chown -R mediexplain:mediexplain /home/mediexplain/.cache
 USER mediexplain
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

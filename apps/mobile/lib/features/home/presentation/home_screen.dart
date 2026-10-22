@@ -10,6 +10,7 @@ import '../../../design_system/widgets/states.dart';
 import '../../medications/application/medication_providers.dart';
 import '../../medications/application/schedule_engine.dart';
 import '../../medications/domain/medication_models.dart';
+import '../../medications/domain/dose_history.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -152,7 +153,7 @@ class HomeScreen extends ConsumerWidget {
                     const SizedBox(height: AppSpacing.lg),
                     AppBanner(
                       message: context.l10n.medicalDisclaimerShort,
-                      icon: AppIcons.shield,
+                      icon: Icons.health_and_safety_outlined,
                     ),
                   ],
                 ),
@@ -165,7 +166,7 @@ class HomeScreen extends ConsumerWidget {
   );
 }
 
-class _UpcomingMedicationCard extends StatelessWidget {
+class _UpcomingMedicationCard extends ConsumerWidget {
   const _UpcomingMedicationCard({
     required this.plans,
     required this.hideDetails,
@@ -174,21 +175,34 @@ class _UpcomingMedicationCard extends StatelessWidget {
   final bool hideDetails;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final now = DateTime.now().toUtc();
+    final recorded = {
+      for (final event in currentDoseEvents(
+        ref.watch(medicationDoseHistoryProvider(null)).valueOrNull ?? const [],
+      ))
+        if (doseWasRecorded(event.action)) event.logicalDoseId,
+    };
     const engine = ScheduleEngine();
     ({MedicationPlanDetails details, DateTime at})? next;
     for (final details in plans) {
+      if (details.medication.status != MedicationStatus.active) continue;
       for (final schedule in details.schedules) {
         final times = engine.occurrences(
           plan: details.plan,
           schedule: schedule,
           from: now,
-          to: now.add(const Duration(days: 2)),
+          to: now.add(const Duration(days: 30)),
         );
-        if (times.isNotEmpty &&
-            (next == null || times.first.isBefore(next.at))) {
-          next = (details: details, at: times.first);
+        final pending = times
+            .where(
+              (time) => !recorded.contains(
+                engine.logicalDoseId(details.plan.id, time),
+              ),
+            )
+            .firstOrNull;
+        if (pending != null && (next == null || pending.isBefore(next.at))) {
+          next = (details: details, at: pending);
         }
       }
     }

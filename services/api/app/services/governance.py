@@ -7,6 +7,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import Settings
 from app.core.time import utc_now
 from app.models import (
     AuditEvent,
@@ -20,6 +21,11 @@ from app.models import (
 )
 from app.providers.medication import normalize_search
 from app.services.content_import import ContentImporter
+from app.services.reference_publication import (
+    LIVE_RELEASE_ID,
+    ReferencePublicationService,
+    publication_lock,
+)
 
 
 class GovernanceService:
@@ -32,8 +38,9 @@ class GovernanceService:
         ("deprecated", "archive"): "archived",
     }
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, settings: Settings | None = None):
         self.db = db
+        self.settings = settings
 
     def create_revision(
         self,
@@ -47,9 +54,46 @@ class GovernanceService:
         permissions: list[str],
         request_id: str,
     ) -> GovernedContent:
+        if stable_id == LIVE_RELEASE_ID:
+            raise ValueError(
+                "The mobile release is compiled automatically; edit its individual records."
+            )
         if content_type == "dataset":
             ContentImporter(self.db).validate(content)
-        record = self.db.get(GovernedContent, stable_id)
+        else:
+            ReferencePublicationService(self.db).candidate(content_type, content)
+        record = self.db.scalar(
+            select(GovernedContent).where(GovernedContent.stable_id == stable_id).with_for_update()
+        )
+        if record is not None and content_type != "dataset":
+            previous = self.db.scalar(
+                select(GovernedContentRevision).where(
+                    GovernedContentRevision.stable_id == stable_id,
+                    GovernedContentRevision.revision == record.current_revision,
+                )
+            )
+            if previous is not None and previous.content.get("id") != content.get("id"):
+                raise ValueError("A revision cannot change its reference content id")
+        if record is None and content_type != "dataset":
+            owner = self.db.scalar(
+                select(GovernedContentRevision)
+                .join(
+                    GovernedContent, GovernedContent.stable_id == GovernedContentRevision.stable_id
+                )
+                .where(
+                    GovernedContent.content_type.in_(
+                        ["terminology", "translation"]
+                        if content_type in {"terminology", "translation"}
+                        else [content_type]
+                    ),
+                    GovernedContent.current_revision == GovernedContentRevision.revision,
+                    GovernedContentRevision.content["id"].as_string() == str(content["id"]),
+                )
+            )
+            if owner is not None:
+                raise ValueError(
+                    "This reference id already has a record; revise " + owner.stable_id
+                )
         if record is None:
             record = GovernedContent(
                 stable_id=stable_id,
@@ -90,7 +134,12 @@ class GovernanceService:
         permissions: list[str],
         request_id: str,
     ) -> GovernedContent:
-        record = self.db.get(GovernedContent, stable_id)
+        if stable_id == LIVE_RELEASE_ID:
+            raise ValueError("The mobile release is managed automatically from published records.")
+        publication_lock(self.db)
+        record = self.db.scalar(
+            select(GovernedContent).where(GovernedContent.stable_id == stable_id).with_for_update()
+        )
         if record is None:
             raise LookupError("content_not_found")
         next_state = self.transitions.get((record.lifecycle_state, action))
@@ -106,7 +155,26 @@ class GovernanceService:
         )
         assert revision is not None
         if action == "approve" and revision.author_id == actor_id:
-            raise ValueError("independent_reviewer_required")
+            if not (
+                self.settings
+                and self.settings.environment == "development"
+                and self.settings.admin_allow_local_self_review
+            ):
+                raise ValueError("independent_reviewer_required")
+            revision.source_metadata = {**revision.source_metadata, "local_self_review": True}
+            self.audit(
+                actor_id,
+                permissions,
+                "content.local_self_review",
+                "content",
+                stable_id,
+                request_id,
+                {
+                    "reason": reason,
+                    "revision": record.current_revision,
+                    "environment": "development",
+                },
+            )
         now = utc_now()
         record.lifecycle_state = next_state
         record.updated_at = now
@@ -120,8 +188,22 @@ class GovernanceService:
                 if not importer.import_document(revision.content, dry_run=True).changed:
                     raise ValueError("reference_release_requires_a_new_dataset_version")
                 importer.import_document(revision.content, commit=False)
+            else:
+                ReferencePublicationService(self.db).publish_item(
+                    record.content_type, revision.content
+                )
             record.published_revision = record.current_revision
             revision.published_at = now
+            ReferencePublicationService(self.db).compile_release(
+                actor_id, f"Publish {stable_id} revision {record.current_revision}: {reason}"
+            )
+        if action == "deprecate":
+            ReferencePublicationService(self.db).withdraw_item(
+                record.content_type, revision.content
+            )
+            ReferencePublicationService(self.db).compile_release(
+                actor_id, f"Withdraw {stable_id}: {reason}"
+            )
         self.audit(
             actor_id,
             permissions,

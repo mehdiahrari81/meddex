@@ -84,28 +84,38 @@ class _QuizSetupScreenState extends ConsumerState<QuizSetupScreen> {
   );
 
   Future<void> _start() async {
+    if (_loading) return;
     setState(() => _loading = true);
-    var questions = await ref
-        .read(learningRepositoryProvider)
-        .quizQuestions(count: _count, difficulty: _difficulty);
-    if (questions.isEmpty) {
-      questions = await ref
+    try {
+      var questions = await ref
           .read(learningRepositoryProvider)
-          .quizQuestions(count: _count);
+          .quizQuestions(count: _count, difficulty: _difficulty);
+      if (questions.isEmpty) {
+        questions = await ref
+            .read(learningRepositoryProvider)
+            .quizQuestions(count: _count);
+      }
+      if (!mounted) return;
+      if (questions.isEmpty) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.nothingHereYet)));
+        return;
+      }
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => QuizSessionScreen(questions: questions),
+        ),
+      );
+    } on Object {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.learningLoadFailed)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
-    if (!mounted) return;
-    setState(() => _loading = false);
-    if (questions.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.l10n.nothingHereYet)));
-      return;
-    }
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => QuizSessionScreen(questions: questions),
-      ),
-    );
   }
 }
 
@@ -121,6 +131,7 @@ class _QuizSessionScreenState extends ConsumerState<QuizSessionScreen> {
   final _answers = <QuizAnswer>[];
   var _index = 0;
   String? _selected;
+  bool _saving = false;
 
   @override
   Widget build(BuildContext context) {
@@ -155,7 +166,9 @@ class _QuizSessionScreenState extends ConsumerState<QuizSessionScreen> {
                     const SizedBox(height: AppSpacing.lg),
                     RadioGroup<String>(
                       groupValue: _selected,
-                      onChanged: (value) => setState(() => _selected = value),
+                      onChanged: (value) {
+                        if (!_saving) setState(() => _selected = value);
+                      },
                       child: Column(
                         children: [
                           for (final option in question.options)
@@ -171,7 +184,7 @@ class _QuizSessionScreenState extends ConsumerState<QuizSessionScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
               FilledButton(
-                onPressed: _submit,
+                onPressed: _saving ? null : _submit,
                 child: Text(
                   _index == widget.questions.length - 1
                       ? context.l10n.quizComplete
@@ -186,20 +199,20 @@ class _QuizSessionScreenState extends ConsumerState<QuizSessionScreen> {
   }
 
   Future<void> _submit() async {
+    if (_saving) return;
     if (_selected == null) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(context.l10n.answerRequired)));
       return;
     }
-    _answers.add(
-      QuizAnswer(
-        questionId: widget.questions[_index].id,
-        selectedOptionIds: {_selected!},
-      ),
+    final answer = QuizAnswer(
+      questionId: widget.questions[_index].id,
+      selectedOptionIds: {_selected!},
     );
     if (_index < widget.questions.length - 1) {
       setState(() {
+        _answers.add(answer);
         _index += 1;
         _selected = null;
       });
@@ -207,18 +220,29 @@ class _QuizSessionScreenState extends ConsumerState<QuizSessionScreen> {
     }
     final result = const QuizEngine().score(
       questions: widget.questions,
-      answers: _answers,
+      answers: [..._answers, answer],
     );
-    await ref
-        .read(learningRepositoryProvider)
-        .saveQuizResult(result, completedAt: DateTime.now().toUtc());
-    ref.invalidate(learningDashboardProvider);
-    if (!mounted) return;
-    await Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(
-        builder: (_) => QuizResultsScreen(result: result),
-      ),
-    );
+    setState(() => _saving = true);
+    try {
+      await ref
+          .read(learningRepositoryProvider)
+          .saveQuizResult(result, completedAt: DateTime.now().toUtc());
+      ref.invalidate(learningDashboardProvider);
+      if (!mounted) return;
+      await Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => QuizResultsScreen(result: result),
+        ),
+      );
+    } on Object {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.learningSaveFailed)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 }
 

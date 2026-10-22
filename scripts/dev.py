@@ -31,7 +31,7 @@ def run(command, capture=False, cwd=ROOT):
     )
 
 
-def compose(args, *command, ai=False, capture=False):
+def compose(args, *command, ai=False, ocr=False, capture=False):
     base = [
         executable("docker"),
         "compose",
@@ -42,6 +42,10 @@ def compose(args, *command, ai=False, capture=False):
         "-f",
         ROOT / "docker-compose.yml",
     ]
+    if (ROOT / "apps/admin/package.json").exists():
+        base += ["--profile", "admin"]
+    if ocr:
+        base += ["-f", ROOT / "docker-compose.ocr.yml"]
     if ai:
         base += ["-f", ROOT / "docker-compose.ai.yml"]
     return run(base + list(command), capture=capture)
@@ -58,12 +62,19 @@ def service_port(args, service, internal_port):
 
 def show_urls(args):
     api = service_port(args, "api", 8000)
-    admin = service_port(args, "admin", 3000)
+    admin = (
+        service_port(args, "admin", 3000)
+        if (ROOT / "apps/admin/package.json").exists()
+        else None
+    )
     mail = service_port(args, "mailpit", 8025)
     with urlopen(f"http://127.0.0.1:{api}/api/v1/ready", timeout=10) as response:
         if response.status != 200:
             raise RuntimeError("The API is not ready; use the logs command.")
-    print(f"Admin:    http://localhost:{admin}")
+    if admin is not None:
+        print(f"Admin:    http://localhost:{admin}")
+    else:
+        print("Admin source is absent in this checkout; API and mobile are available.")
     print(f"API docs: http://localhost:{api}/docs")
     print(f"Mailpit:  http://localhost:{mail}")
     print(f"Create your admin: python3 scripts/dev.py --project {args.project} admin")
@@ -137,7 +148,7 @@ def main():
     start.add_argument(
         "--ai",
         action="store_true",
-        help="Connect API to host Ollama; see AI_FEATURES.md",
+        help="Enable Gemini with host Ollama fallback; see AI_FEATURES.md",
     )
     commands.add_parser(
         "stop", help="Stop containers while retaining the database volume"
@@ -162,12 +173,35 @@ def main():
     mobile.add_argument(
         "--device", help="adb serial on Android; Flutter device ID on iOS"
     )
+    start.add_argument(
+        "--ocr", action="store_true", help="Enable CPU handwriting recognition"
+    )
     args = parser.parse_args()
 
     if args.command == "start":
         compose(
-            args, "up", "-d", "--build", "--wait", "--wait-timeout", "300", ai=args.ai
+            args,
+            "up",
+            "-d",
+            "--build",
+            "--wait",
+            "--wait-timeout",
+            "300",
+            ai=args.ai,
+            ocr=args.ocr,
         )
+        if args.ai:
+            compose(
+                args,
+                "exec",
+                "-T",
+                "api",
+                "python",
+                "-m",
+                "app.cli",
+                "enable-ai",
+                ai=True,
+            )
         show_urls(args)
     elif args.command == "stop":
         compose(args, "down")
@@ -176,7 +210,7 @@ def main():
         compose(args, "ps")
         show_urls(args)
     elif args.command == "logs":
-        compose(args, "logs", "--tail", "100", "-f", "api", "admin")
+        compose(args, "logs", "--tail", "100", "-f", "api")
     elif args.command == "admin":
         email = args.email or input("Admin email: ").strip()
         name = args.name or input("Display name: ").strip()

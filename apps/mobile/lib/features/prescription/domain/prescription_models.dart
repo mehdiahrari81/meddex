@@ -243,6 +243,15 @@ class ParsedField {
 
   bool get hasValue => currentValue?.trim().isNotEmpty ?? false;
   bool get changedByUser => source == FieldValueSource.user;
+  bool get needsClarification {
+    if (userConfirmed) return false;
+    if (ambiguous) return true;
+    return type == PrescriptionFieldType.dose &&
+        RegExp(
+          r'\b(?:tab(?:let)?s?|caps?(?:ule)?s?)\s+[ivxl]+\b|\b[ivxl]+\s+(?:tabs?|caps?)\b',
+          caseSensitive: false,
+        ).hasMatch(currentValue ?? '');
+  }
 
   ParsedField edit(String value, DateTime now) => ParsedField(
     type: type,
@@ -267,6 +276,21 @@ class ParsedField {
     ambiguous: ambiguous,
     userConfirmed: hasValue,
     changedAt: changedAt ?? now.toUtc(),
+    possibleMeanings: possibleMeanings,
+  );
+
+  /// Only the explicit per-medicine Confirm action resolves a readable OCR
+  /// uncertainty without an edit. Preserve the original transcription/source.
+  ParsedField confirmAfterReview(DateTime now) => ParsedField(
+    type: type,
+    originalValue: originalValue,
+    machineNormalizedValue: machineNormalizedValue,
+    currentValue: currentValue,
+    source: source,
+    confidence: confidence,
+    ambiguous: false,
+    userConfirmed: hasValue,
+    changedAt: now.toUtc(),
     possibleMeanings: possibleMeanings,
   );
 

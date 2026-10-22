@@ -10,13 +10,13 @@ import '../../features/auth/application/auth_controller.dart';
 import '../../features/settings/application/settings_controller.dart';
 import '../../features/prescription/application/prescription_providers.dart';
 import '../../features/medications/application/medication_providers.dart';
-import '../../features/medications/domain/medication_models.dart';
 import 'startup_coordinator.dart';
 
 final startupCoordinatorProvider = Provider<StartupCoordinator>((ref) {
   return StartupCoordinator(
     tasks: [
       StartupTask(StartupStep.environment, () async {
+        await ref.read(settingsControllerProvider.future);
         ref.read(appConfigProvider);
       }),
       StartupTask(StartupStep.secureStorage, () async {
@@ -77,13 +77,12 @@ final startupCoordinatorProvider = Provider<StartupCoordinator>((ref) {
         try {
           final adapter = ref.read(notificationAdapterProvider);
           final reminderService = ref.read(medicationReminderServiceProvider);
-          await adapter.initialize(reminderService.handle);
+          await adapter.initialize(
+            (response) =>
+                ref.read(medicationReminderServiceProvider).handle(response),
+          );
           final plans = await ref.read(medicationPlansProvider.future);
-          if (plans.isNotEmpty &&
-              await ref.read(notificationPermissionProvider).status() ==
-                  NotificationPermissionState.granted) {
-            await reminderService.rebuild(plans: plans);
-          }
+          await reminderService.rebuild(plans: plans);
         } on Object {
           // Non-fatal notification adapter failure
         }

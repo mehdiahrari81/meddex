@@ -84,13 +84,16 @@ def login(
 
 
 @router.get("/me", response_model=AdminMeRead)
-def me(admin: CurrentAdminDependency) -> AdminMeRead:
+def me(admin: CurrentAdminDependency, settings: SettingsDependency) -> AdminMeRead:
     return AdminMeRead(
         user_id=admin.user.id,
         email=admin.user.email,
         role=admin.role,
         permissions=sorted(admin.permissions),
         session_id=admin.auth_session.id,
+        local_self_review_allowed=(
+            settings.environment == "development" and settings.admin_allow_local_self_review
+        ),
     )
 
 
@@ -124,15 +127,72 @@ def dashboard(
 
 @router.get("/content", response_model=list[GovernedContentRead])
 def list_content(
-    admin: ContentReadAdmin, db: DatabaseDependency, offset: int = 0, limit: int = 50
+    admin: ContentReadAdmin,
+    db: DatabaseDependency,
+    offset: int = 0,
+    limit: int = 50,
+    content_type: str | None = None,
 ) -> list[GovernedContentRead]:
-    values = db.scalars(
-        select(GovernedContent)
-        .order_by(GovernedContent.updated_at.desc())
+    statement = select(GovernedContent, GovernedContentRevision).join(
+        GovernedContentRevision,
+        (GovernedContentRevision.stable_id == GovernedContent.stable_id)
+        & (GovernedContentRevision.revision == GovernedContent.current_revision),
+    )
+    if content_type:
+        statement = statement.where(GovernedContent.content_type == content_type)
+    values = db.execute(
+        statement.order_by(GovernedContent.updated_at.desc())
         .offset(max(0, offset))
         .limit(min(max(1, limit), 100))
     ).all()
-    return [GovernedContentRead.model_validate(item, from_attributes=True) for item in values]
+    return [
+        GovernedContentRead.model_validate(item, from_attributes=True).model_copy(
+            update={
+                "title": str(
+                    revision.content.get("title")
+                    or revision.content.get("term")
+                    or revision.content.get("front")
+                    or revision.content.get("value")
+                    or revision.content.get("abbreviation")
+                    or item.stable_id
+                )[:300]
+            }
+        )
+        for item, revision in values
+    ]
+
+
+@router.get("/reference/options")
+def reference_options(admin: ContentReadAdmin, db: DatabaseDependency) -> dict[str, object]:
+    from app.models import Category, ContentSource, MedicalTerm
+
+    return {
+        "categories": [
+            {"id": row.id, "name": row.name}
+            for row in db.scalars(select(Category).order_by(Category.name))
+        ],
+        "sources": [
+            {
+                "id": row.id,
+                "title": row.title,
+                "reference": row.canonical_reference,
+                "review_status": row.review_status,
+            }
+            for row in db.scalars(
+                select(ContentSource)
+                .where(ContentSource.review_status.in_(["reviewed", "approved"]))
+                .order_by(ContentSource.title)
+            )
+        ],
+        "terms": [
+            {"id": row.id, "name": row.canonical_term}
+            for row in db.scalars(
+                select(MedicalTerm)
+                .where(MedicalTerm.deprecated.is_(False))
+                .order_by(MedicalTerm.canonical_term)
+            )
+        ],
+    }
 
 
 @router.get("/content/{stable_id}", response_model=GovernedContentRead)
@@ -224,7 +284,7 @@ def content_workflow(
                     status_code=409, detail="Reference release is not production-approved"
                 )
     try:
-        value = GovernanceService(db).workflow(
+        value = GovernanceService(db, settings).workflow(
             stable_id=stable_id,
             action=payload.action,
             reason=payload.reason,

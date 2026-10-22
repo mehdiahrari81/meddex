@@ -1,6 +1,12 @@
 # MediExplain
 
-MediExplain is an offline-first Flutter medical-literacy application with a FastAPI/PostgreSQL service and a separate Next.js administration application. Its medical-information rule is fixed: trusted source → structured fact + provenance → optional grounded explanation → validation → user. OCR and language models are never medical sources.
+MediExplain is an offline-first Flutter medical-literacy application with a FastAPI/PostgreSQL service and an Next.js administration application. Its medical-information rule is fixed: trusted source → structured fact + provenance → optional grounded explanation → validation → user. OCR and language models are never medical sources.
+
+For the implemented authentication fixes, CPU handwriting recognition, 78 NLM-verified medicine records, measured tests, and setup, see [delivery details](docs/AUTH_OCR_REFERENCE_DELIVERY.md). Default on-device OCR stays offline; cloud image reading requires separate approval and human review.
+
+Gemini-first medical-assistant routing, automatic Ollama quota fallback, and iOS setup are documented in [Gemini, Ollama, and iOS](docs/GEMINI_OLLAMA_IOS.md). Put the server key in `services/api/.env`; the mobile application contains no API keys.
+
+For medicine-only prescription reviews, optional Gemini handwriting image reading, explained abbreviations and cited Betaloc/ingredient references, see the [prescription workflow](docs/PRESCRIPTION_GEMINI_STRUCTURING.md).
 
 ## Applications
 
@@ -17,7 +23,7 @@ Install **Git, Docker with Compose v2, and Python 3.10+**. Start Docker, then ru
 ```sh
 git clone https://github.com/asjadyousaf05/Medi-Term-Explainer.git
 cd Medi-Term-Explainer
-python3 scripts/dev.py start
+python3 scripts/dev.py start --ocr
 python3 scripts/dev.py admin
 ```
 
@@ -41,7 +47,7 @@ See the [complete laptop setup and troubleshooting guide](docs/RUN_ON_ANOTHER_LA
 docker compose up --build
 ```
 
-This starts PostgreSQL, migrates/seeds the API at `http://localhost:8000`, starts admin at `http://localhost:3000`, and captures password-reset messages in Mailpit at `http://localhost:8025`. Restarts preserve installed reference releases. It creates no default administrator. Provision your named account interactively:
+This starts PostgreSQL, migrates/seeds the API at `http://localhost:8000`, installs the verified medicine reference snapshot, and captures password-reset messages in Mailpit at `http://localhost:8025`. Restarts preserve installed reference releases. It creates no default administrator. Provision your named account interactively:
 
 ```sh
 docker compose exec api python -m app.cli provision-admin \
@@ -50,7 +56,7 @@ docker compose exec api python -m app.cli provision-admin \
 
 See [local development](docs/LOCAL_DEVELOPMENT.md) for complete setup, alternate ports, account storage, reference publication, and password recovery.
 
-The [admin dashboard guide](docs/ADMIN_DASHBOARD.md) covers the redesigned portal, labeled FYP demonstration data, screenshots, and repeatable local seeding.
+The [admin-to-mobile data flow guide](docs/ADMIN_MOBILE_DATA_FLOW.md) covers the current portal, existing reference catalogue, publication workflow, and exhibition setup. The [older admin dashboard report](docs/ADMIN_DASHBOARD.md) records historical UI checks and demonstration seeding for a different installation.
 
 For mobile:
 

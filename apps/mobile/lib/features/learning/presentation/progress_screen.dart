@@ -32,12 +32,12 @@ class ProgressScreen extends ConsumerWidget {
             ),
             (
               context.l10n.lessonsCompleted,
-              '${value.lessonsCompleted}',
+              '${value.lessonsCompleted} / ${value.totalLessons}',
               Icons.task_alt_outlined,
             ),
             (
               context.l10n.flashcardsReviewed,
-              '${value.flashcardsReviewed}',
+              '${value.flashcardsReviewed} / ${value.totalFlashcards}',
               Icons.style_outlined,
             ),
             (
@@ -64,6 +64,13 @@ class ProgressScreen extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.all(AppSpacing.lg),
             children: [
+              LinearProgressIndicator(
+                value: value.lessonCompletion,
+                semanticsLabel: context.l10n.lessonProgressLabel(
+                  (value.lessonCompletion * 100).round(),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
               LayoutBuilder(
                 builder: (context, constraints) {
                   final columns = constraints.maxWidth >= 720 ? 3 : 2;

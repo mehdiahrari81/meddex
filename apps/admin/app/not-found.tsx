@@ -1,0 +1,1 @@
+export default function NotFound() { return <main className="login-shell"><section className="login-card"><h1>Page not found</h1><p>The requested administrative route does not exist.</p></section></main>; }

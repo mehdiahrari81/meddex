@@ -1,9 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mediexplain/core/database/database_provider.dart';
+import 'package:mediexplain/features/learning/application/learning_providers.dart';
 import 'package:mediexplain/core/database/app_database.dart';
 import 'package:mediexplain/core/sync/sync_coordinator.dart';
 import 'package:mediexplain/features/learning/application/quiz_engine.dart';
@@ -34,7 +38,11 @@ void main() {
       database: database,
       transport: const DisabledSyncTransport(),
     );
-    learning = LocalLearningRepository(database, sync);
+    learning = LocalLearningRepository(
+      database,
+      sync,
+      clock: () => DateTime(2026, 8, 13, 12),
+    );
   });
 
   tearDown(() => database.close());
@@ -280,7 +288,11 @@ void main() {
       final bootstrap = await TerminologySeedImporter(database).importBundled();
       expect(bootstrap.changed, isFalse);
       expect(
-        (await database.select(database.contentVersions).getSingle())
+        (await (database.select(database.contentVersions)..where(
+                  (row) =>
+                      row.datasetName.equals('mediexplain-development-starter'),
+                ))
+                .getSingle())
             .datasetVersion,
         'release-refresh-v2',
       );
@@ -295,6 +307,163 @@ void main() {
         ).termById('term-hypertension'),
         isNotNull,
       );
+    },
+  );
+
+  test(
+    'learning expansion preserves progress and quizzes and installs once',
+    () async {
+      final importer = TerminologySeedImporter(database);
+      final originalQuiz = await database.select(database.quizQuestions).get();
+      final originalOptions = await database.select(database.quizOptions).get();
+      final now = DateTime.now().toUtc();
+      await learning.saveLessonProgress(
+        LessonProgress(
+          lessonId: 'lesson-intro-morphology',
+          lastSectionIndex: 2,
+          completionPercentage: 1,
+          startedAt: now,
+          updatedAt: now,
+          completedAt: now,
+          reviewRequired: false,
+        ),
+      );
+      final initial = await learning.dashboard();
+      expect(initial.totalLessons, 2);
+      expect(initial.dueReviews, 4);
+      await importer.importBundled();
+      await importer.importBundled();
+      final expanded = await learning.dashboard();
+      expect(expanded.totalLessons, 30);
+      expect(expanded.totalFlashcards, 60);
+      expect(expanded.lessonsCompleted, 1);
+      expect(expanded.lessonCompletion, closeTo(1 / 30, .001));
+      expect(expanded.dueReviews, 60);
+      expect(await learning.dueFlashcards(limit: 100), hasLength(60));
+      expect(await database.select(database.quizQuestions).get(), originalQuiz);
+      expect(
+        await database.select(database.quizOptions).get(),
+        originalOptions,
+      );
+      await learning.saveLessonProgress(
+        LessonProgress(
+          lessonId: 'lesson-medicine-labels',
+          lastSectionIndex: 2,
+          completionPercentage: 1,
+          startedAt: now,
+          updatedAt: now,
+          completedAt: now,
+          reviewRequired: false,
+        ),
+      );
+      expect((await learning.dashboard()).lessonsCompleted, 2);
+      await learning.saveLessonProgress(
+        LessonProgress(
+          lessonId: 'lesson-medicine-labels',
+          lastSectionIndex: 0,
+          completionPercentage: 1 / 3,
+          startedAt: now,
+          updatedAt: now,
+          reviewRequired: false,
+        ),
+      );
+      expect((await learning.dashboard()).lessonsCompleted, 2);
+      expect(
+        (await learning.lessonProgress(
+          'lesson-medicine-labels',
+        ))!.completionPercentage,
+        1,
+      );
+      final schedule = const SpacedRepetitionScheduler().review(
+        current: const SpacedRepetitionScheduler().initial(
+          'card-learn-medicine-labels-1',
+          now,
+        ),
+        performance: ReviewPerformance.good,
+        reviewedAt: now,
+      );
+      await learning.saveFlashcardReview(schedule);
+      expect((await learning.dashboard()).flashcardsReviewed, 1);
+      expect((await learning.dashboard()).dueReviews, 59);
+      final cards = await learning.dueFlashcards(limit: 100);
+      expect(cards.any((card) => card.id == schedule.flashcardId), isFalse);
+    },
+  );
+
+  test(
+    'dashboard refreshes after catalog changes and lesson completion',
+    () async {
+      final container = ProviderContainer(
+        overrides: [
+          databaseProvider.overrideWithValue(database),
+          learningRepositoryProvider.overrideWithValue(learning),
+        ],
+      );
+      final changed = Completer<LearningDashboard>();
+      final subscription = container.listen(learningDashboardProvider, (
+        _,
+        next,
+      ) {
+        final value = next.valueOrNull;
+        if (value != null &&
+            value.totalLessons == 30 &&
+            value.lessonsCompleted == 1 &&
+            !changed.isCompleted) {
+          changed.complete(value);
+        }
+      });
+      try {
+        expect(
+          (await container.read(learningDashboardProvider.future)).totalLessons,
+          2,
+        );
+        await TerminologySeedImporter(database).importBundled();
+        final now = DateTime.now().toUtc();
+        await learning.saveLessonProgress(
+          LessonProgress(
+            lessonId: 'lesson-medicine-labels',
+            lastSectionIndex: 2,
+            completionPercentage: 1,
+            startedAt: now,
+            updatedAt: now,
+            completedAt: now,
+            reviewRequired: false,
+          ),
+        );
+        expect(
+          (await changed.future.timeout(
+            const Duration(seconds: 5),
+          )).lessonCompletion,
+          closeTo(1 / 30, .001),
+        );
+      } finally {
+        subscription.close();
+        container.dispose();
+      }
+    },
+  );
+
+  test(
+    'additive expansion preserves administrator edits on existing records',
+    () async {
+      final importer = TerminologySeedImporter(database);
+      final raw = File(
+        'assets/terminology/learning_expansion_v1.json',
+      ).readAsStringSync();
+      await importer.importJson(raw, additive: true);
+      await (database.update(
+        database.learningLessons,
+      )..where((row) => row.id.equals('lesson-medicine-labels'))).write(
+        const LearningLessonsCompanion(title: Value('Administrator title')),
+      );
+      final document = jsonDecode(raw) as Map<String, dynamic>;
+      document['dataset_version'] = 'future-additions';
+      await importer.importJson(jsonEncode(document), additive: true);
+      expect(
+        (await learning.lessonById('lesson-medicine-labels'))!.title,
+        'Administrator title',
+      );
+      expect((await learning.dashboard()).totalLessons, 30);
     },
   );
 
@@ -315,6 +484,58 @@ void main() {
         (await database.select(database.contentVersions).getSingle())
             .datasetVersion,
         '2026.08.3',
+      );
+    },
+  );
+  test(
+    'revised lesson sections replace stale sections and preserve completion',
+    () async {
+      final document = jsonDecode(rawDataset) as Map<String, dynamic>;
+      final lesson =
+          (document['lessons'] as List).first as Map<String, dynamic>;
+      final id = lesson['id'] as String;
+      final now = DateTime.utc(2026, 10, 22);
+      await learning.saveLessonProgress(
+        LessonProgress(
+          lessonId: id,
+          lastSectionIndex: 0,
+          completionPercentage: 1,
+          startedAt: now,
+          updatedAt: now,
+          completedAt: now,
+          reviewRequired: false,
+        ),
+      );
+      lesson['sections'] = [(lesson['sections'] as List).first];
+      document['dataset_version'] = 'revised-sections-v2';
+      await TerminologySeedImporter(database).importJson(jsonEncode(document));
+      expect((await learning.lessonById(id))!.sections, hasLength(1));
+      expect((await learning.dashboard()).lessonsCompleted, 1);
+    },
+  );
+
+  test(
+    'withdrawn abbreviation is removed without deleting saved user records',
+    () async {
+      final document = jsonDecode(rawDataset) as Map<String, dynamic>;
+      final abbreviation =
+          (document['abbreviations'] as List).first as Map<String, dynamic>;
+      final id = abbreviation['id'] as String;
+      final saved = LocalSavedContentRepository(database, sync);
+      await saved.save('term-hypertension', MedicalContentType.term);
+      document['abbreviations'] = (document['abbreviations'] as List)
+          .where((row) => (row as Map)['id'] != id)
+          .toList();
+      document['withdrawn_abbreviation_ids'] = [id];
+      document['dataset_version'] = 'withdrawn-abbreviation-v2';
+      await TerminologySeedImporter(database).importJson(jsonEncode(document));
+      final remaining = await (database.select(
+        database.medicalAbbreviations,
+      )..where((row) => row.id.equals(id))).get();
+      expect(remaining, isEmpty);
+      expect(
+        await saved.isSaved('term-hypertension', MedicalContentType.term),
+        isTrue,
       );
     },
   );

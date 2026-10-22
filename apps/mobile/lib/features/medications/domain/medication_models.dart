@@ -319,6 +319,7 @@ class CreateMedicationPlanRequest {
     this.intervalHours,
     this.intervalAnchor,
     this.asNeeded = false,
+    this.remindersEnabled = true,
   });
 
   final MedicationSourceType sourceType;
@@ -341,6 +342,7 @@ class CreateMedicationPlanRequest {
   final int? intervalHours;
   final DateTime? intervalAnchor;
   final bool asNeeded;
+  final bool remindersEnabled;
 }
 
 class MedicationActivity {

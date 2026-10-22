@@ -20,6 +20,8 @@ class AppSettings {
     required this.biometricLockEnabled,
     required this.deletePrescriptionImagesAfterConfirmation,
     required this.lastUsefulLocation,
+    this.developmentServerUrl = '',
+    this.automaticServerConnection = true,
   });
 
   const AppSettings.defaults()
@@ -40,7 +42,9 @@ class AppSettings {
       analyticsEnabled = false,
       biometricLockEnabled = false,
       deletePrescriptionImagesAfterConfirmation = true,
-      lastUsefulLocation = '/home';
+      lastUsefulLocation = '/home',
+      developmentServerUrl = '',
+      automaticServerConnection = true;
 
   final bool onboardingComplete;
   final int consentVersion;
@@ -60,6 +64,8 @@ class AppSettings {
   final bool biometricLockEnabled;
   final bool deletePrescriptionImagesAfterConfirmation;
   final String lastUsefulLocation;
+  final String developmentServerUrl;
+  final bool automaticServerConnection;
 
   AppSettings copyWith({
     bool? onboardingComplete,
@@ -80,6 +86,8 @@ class AppSettings {
     bool? biometricLockEnabled,
     bool? deletePrescriptionImagesAfterConfirmation,
     String? lastUsefulLocation,
+    String? developmentServerUrl,
+    bool? automaticServerConnection,
   }) => AppSettings(
     onboardingComplete: onboardingComplete ?? this.onboardingComplete,
     consentVersion: consentVersion ?? this.consentVersion,
@@ -101,5 +109,8 @@ class AppSettings {
         deletePrescriptionImagesAfterConfirmation ??
         this.deletePrescriptionImagesAfterConfirmation,
     lastUsefulLocation: lastUsefulLocation ?? this.lastUsefulLocation,
+    developmentServerUrl: developmentServerUrl ?? this.developmentServerUrl,
+    automaticServerConnection:
+        automaticServerConnection ?? this.automaticServerConnection,
   );
 }

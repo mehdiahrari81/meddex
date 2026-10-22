@@ -1,0 +1,248 @@
+{
+  "language": "fa-IR",
+  "voice": "fa-IR-FaridNeural",
+  "provider": "Microsoft Edge online TTS",
+  "client": "edge-tts",
+  "synthetic_voice": true,
+  "duration_seconds": 1379.376,
+  "duration": "22:59",
+  "complete_file": "MediExplain-Farsi-Podcast.m4a",
+  "chapter_count": 16,
+  "chapters": [
+    {
+      "id": "01",
+      "title": "از کجا شروع کنیم",
+      "start_seconds": 0.0,
+      "duration_seconds": 78.984,
+      "file": "chapters/01.m4a"
+    },
+    {
+      "id": "02",
+      "title": "تصویر کلی با مثال رستوران",
+      "start_seconds": 79.984,
+      "duration_seconds": 80.736,
+      "file": "chapters/02.m4a"
+    },
+    {
+      "id": "03",
+      "title": "پوشه‌های اصلی پروژه",
+      "start_seconds": 161.72,
+      "duration_seconds": 80.904,
+      "file": "chapters/03.m4a"
+    },
+    {
+      "id": "04",
+      "title": "داخل برنامهٔ موبایل",
+      "start_seconds": 243.624,
+      "duration_seconds": 82.512,
+      "file": "chapters/04.m4a"
+    },
+    {
+      "id": "05",
+      "title": "چهار لایهٔ هر ویژگی",
+      "start_seconds": 327.136,
+      "duration_seconds": 83.952,
+      "file": "chapters/05.m4a"
+    },
+    {
+      "id": "06",
+      "title": "روشن شدن برنامه و فایل‌های باز تو",
+      "start_seconds": 412.088,
+      "duration_seconds": 83.76,
+      "file": "chapters/06.m4a"
+    },
+    {
+      "id": "07",
+      "title": "ورود کاربر از دکمه تا سرور",
+      "start_seconds": 496.848,
+      "duration_seconds": 82.224,
+      "file": "chapters/07.m4a"
+    },
+    {
+      "id": "08",
+      "title": "عکس نسخه چطور خوانده می‌شود",
+      "start_seconds": 580.072,
+      "duration_seconds": 78.312,
+      "file": "chapters/08.m4a"
+    },
+    {
+      "id": "09",
+      "title": "از متن کامل تا داروهای مرتب",
+      "start_seconds": 659.384,
+      "duration_seconds": 84.936,
+      "file": "chapters/09.m4a"
+    },
+    {
+      "id": "10",
+      "title": "توضیح همهٔ داروها و معنی رگ",
+      "start_seconds": 745.32,
+      "duration_seconds": 82.992,
+      "file": "chapters/10.m4a"
+    },
+    {
+      "id": "11",
+      "title": "چرا دو دیتابیس داریم",
+      "start_seconds": 829.312,
+      "duration_seconds": 88.872,
+      "file": "chapters/11.m4a"
+    },
+    {
+      "id": "12",
+      "title": "یادآور دارو و ثبت خورده شد",
+      "start_seconds": 919.184,
+      "duration_seconds": 88.776,
+      "file": "chapters/12.m4a"
+    },
+    {
+      "id": "13",
+      "title": "لغت‌نامه و یادگیری",
+      "start_seconds": 1008.96,
+      "duration_seconds": 87.864,
+      "file": "chapters/13.m4a"
+    },
+    {
+      "id": "14",
+      "title": "نقشهٔ بک اند و هوش مصنوعی",
+      "start_seconds": 1097.824,
+      "duration_seconds": 89.256,
+      "file": "chapters/14.m4a"
+    },
+    {
+      "id": "15",
+      "title": "امنیت ابزارها و آزمایش",
+      "start_seconds": 1188.08,
+      "duration_seconds": 88.056,
+      "file": "chapters/15.m4a"
+    },
+    {
+      "id": "16",
+      "title": "تمرین کوتاه برای دفاع",
+      "start_seconds": 1277.136,
+      "duration_seconds": 102.24,
+      "file": "chapters/16.m4a"
+    }
+  ],
+  "quality_checks": [
+    {
+      "id": "01",
+      "duration_seconds": 78.984,
+      "peak": 0.5984,
+      "rms": 0.063,
+      "sampled_clipping_fraction": 0.0
+    },
+    {
+      "id": "02",
+      "duration_seconds": 80.736,
+      "peak": 0.5642,
+      "rms": 0.0627,
+      "sampled_clipping_fraction": 0.0
+    },
+    {
+      "id": "03",
+      "duration_seconds": 80.904,
+      "peak": 0.6265,
+      "rms": 0.0643,
+      "sampled_clipping_fraction": 0.0
+    },
+    {
+      "id": "04",
+      "duration_seconds": 82.512,
+      "peak": 0.6152,
+      "rms": 0.0625,
+      "sampled_clipping_fraction": 0.0
+    },
+    {
+      "id": "05",
+      "duration_seconds": 83.952,
+      "peak": 0.6237,
+      "rms": 0.0633,
+      "sampled_clipping_fraction": 0.0
+    },
+    {
+      "id": "06",
+      "duration_seconds": 83.76,
+      "peak": 0.5577,
+      "rms": 0.0624,
+      "sampled_clipping_fraction": 0.0
+    },
+    {
+      "id": "07",
+      "duration_seconds": 82.224,
+      "peak": 0.565,
+      "rms": 0.0634,
+      "sampled_clipping_fraction": 0.0
+    },
+    {
+      "id": "08",
+      "duration_seconds": 78.312,
+      "peak": 0.6113,
+      "rms": 0.0623,
+      "sampled_clipping_fraction": 0.0
+    },
+    {
+      "id": "09",
+      "duration_seconds": 84.936,
+      "peak": 0.6038,
+      "rms": 0.0631,
+      "sampled_clipping_fraction": 0.0
+    },
+    {
+      "id": "10",
+      "duration_seconds": 82.992,
+      "peak": 0.5963,
+      "rms": 0.0643,
+      "sampled_clipping_fraction": 0.0
+    },
+    {
+      "id": "11",
+      "duration_seconds": 88.872,
+      "peak": 0.5872,
+      "rms": 0.0613,
+      "sampled_clipping_fraction": 0.0
+    },
+    {
+      "id": "12",
+      "duration_seconds": 88.776,
+      "peak": 0.5923,
+      "rms": 0.0643,
+      "sampled_clipping_fraction": 0.0
+    },
+    {
+      "id": "13",
+      "duration_seconds": 87.864,
+      "peak": 0.6188,
+      "rms": 0.0623,
+      "sampled_clipping_fraction": 0.0
+    },
+    {
+      "id": "14",
+      "duration_seconds": 89.256,
+      "peak": 0.5558,
+      "rms": 0.0649,
+      "sampled_clipping_fraction": 0.0
+    },
+    {
+      "id": "15",
+      "duration_seconds": 88.056,
+      "peak": 0.5877,
+      "rms": 0.0651,
+      "sampled_clipping_fraction": 0.0
+    },
+    {
+      "id": "16",
+      "duration_seconds": 102.24,
+      "peak": 0.6175,
+      "rms": 0.0596,
+      "sampled_clipping_fraction": 0.0
+    }
+  ],
+  "complete_decode_verified": true,
+  "automated_speech_checks": {
+    "language": "fa",
+    "opening_clip_intelligible": true,
+    "other_chapter_endings_transcribed": 15,
+    "chapter_05_final_sentence_verified_from_synthesis_metadata": true,
+    "chapter_05_regenerated_after_detected_truncation": true,
+    "human_full_listen_performed": false
+  }
+}

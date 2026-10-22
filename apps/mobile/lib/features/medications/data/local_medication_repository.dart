@@ -1,9 +1,11 @@
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
+import 'package:timezone/timezone.dart' as tz;
 import 'package:uuid/uuid.dart';
 
 import '../../../core/database/app_database.dart' as db;
+import '../../../core/sync/sync_coordinator.dart';
 import '../../prescription/domain/prescription_models.dart';
 import '../domain/medication_models.dart';
 import '../domain/medication_repository.dart';
@@ -136,6 +138,9 @@ class LocalMedicationRepository implements MedicationRepository {
   ) async {
     _validateRequest(request);
     if (request.sourceType == MedicationSourceType.confirmedPrescription) {
+      if (request.prescriptionItemId == null) {
+        throw ArgumentError('A confirmed prescription item is required.');
+      }
       await _requireConfirmedPrescriptionItem(request.prescriptionItemId!);
     }
     final now = _clock();
@@ -166,6 +171,7 @@ class LocalMedicationRepository implements MedicationRepository {
               id: planId,
               medicationId: medicationId,
               prescriptionItemId: Value(request.prescriptionItemId),
+              active: Value(request.remindersEnabled),
               confirmedDoseText: request.confirmedDoseText.trim(),
               confirmedFrequency: request.confirmedFrequency.trim(),
               confirmedDuration: Value(_nullable(request.confirmedDuration)),
@@ -204,10 +210,20 @@ class LocalMedicationRepository implements MedicationRepository {
         asNeeded: request.asNeeded,
         now: now,
       );
-      await _history(planId, 'schedule_created', now, {
-        'schedule_type': request.scheduleType.name,
-        'reminder_count': request.reminderTimes.length,
-      });
+      if (!request.remindersEnabled) {
+        await (_database.update(_database.medicationSchedules)
+              ..where((row) => row.medicationPlanId.equals(planId)))
+            .write(const db.MedicationSchedulesCompanion(active: Value(false)));
+      }
+      await _history(
+        planId,
+        request.remindersEnabled ? 'schedule_created' : 'medicine_saved',
+        now,
+        {
+          'schedule_type': request.scheduleType.name,
+          'reminder_count': request.reminderTimes.length,
+        },
+      );
       await _enqueue(
         entityType: 'medication_plan',
         entityId: planId,
@@ -219,19 +235,109 @@ class LocalMedicationRepository implements MedicationRepository {
     return (await getPlan(planId))!;
   }
 
+  @override
+  Future<List<MedicationPlanDetails>> saveConfirmedPrescription(
+    String prescriptionId,
+  ) async {
+    // Save the reviewed list without inventing reminder times or missing instructions.
+    return _database.transaction(() async {
+      final prescription =
+          await (_database.select(_database.prescriptions)..where(
+                (row) => row.id.equals(prescriptionId) & row.deletedAt.isNull(),
+              ))
+              .getSingleOrNull();
+      if (prescription == null ||
+          prescription.pipelineState !=
+              PrescriptionPipelineState.readyForMedicationLookup.name) {
+        throw StateError('Confirm the prescription before adding medicines.');
+      }
+      final items =
+          await (_database.select(_database.prescriptionItems)
+                ..where(
+                  (row) =>
+                      row.prescriptionId.equals(prescriptionId) &
+                      row.state.isNotValue(PrescriptionItemState.rejected.name),
+                )
+                ..orderBy([(row) => OrderingTerm.asc(row.position)]))
+              .get();
+      if (items.isEmpty) throw StateError('No medicines to add.');
+      final result = <MedicationPlanDetails>[];
+      for (final item in items) {
+        await _requireConfirmedPrescriptionItem(item.id);
+        final existing =
+            await (_database.select(_database.medicationPlans)
+                  ..where(
+                    (row) =>
+                        row.prescriptionItemId.equals(item.id) &
+                        row.deletedAt.isNull(),
+                  )
+                  ..limit(1))
+                .getSingleOrNull();
+        if (existing != null) {
+          final details = await getPlan(existing.id);
+          if (details != null) {
+            result.add(details);
+            continue;
+          }
+        }
+        final fields = await (_database.select(
+          _database.prescriptionFieldCandidates,
+        )..where((row) => row.prescriptionItemId.equals(item.id))).get();
+        if (fields.any(
+          (field) =>
+              (field.currentValue?.trim().isNotEmpty ?? false) &&
+              (!field.userConfirmed || field.ambiguous),
+        )) {
+          throw StateError(
+            'Check every readable field before adding this medicine.',
+          );
+        }
+        String? value(PrescriptionFieldType type) => fields
+            .where((field) => field.fieldType == type.name)
+            .firstOrNull
+            ?.currentValue;
+        final instruction = PrescriptionFieldType.values
+            .map(value)
+            .whereType<String>()
+            .where((v) => v.trim().isNotEmpty)
+            .join(' · ');
+        result.add(
+          await createPlan(
+            CreateMedicationPlanRequest(
+              sourceType: MedicationSourceType.confirmedPrescription,
+              prescriptionItemId: item.id,
+              displayName: value(PrescriptionFieldType.medicationName)!,
+              strength: value(PrescriptionFieldType.strength),
+              dosageForm: value(PrescriptionFieldType.dosageForm),
+              confirmedDoseText: value(PrescriptionFieldType.dose) ?? '',
+              confirmedFrequency: value(PrescriptionFieldType.frequency) ?? '',
+              confirmedDuration: value(PrescriptionFieldType.duration),
+              confirmedInstruction: instruction,
+              rawPrescriptionInstruction: item.sourceText,
+              instructions: value(PrescriptionFieldType.instructions),
+              startDate: _clock(),
+              timezone: 'UTC',
+              scheduleType: MedicationScheduleType.custom,
+              remindersEnabled: false,
+            ),
+          ),
+        );
+      }
+      return result;
+    });
+  }
+
   void _validateRequest(CreateMedicationPlanRequest request) {
     if (request.displayName.trim().isEmpty ||
-        request.confirmedDoseText.trim().isEmpty ||
-        request.confirmedFrequency.trim().isEmpty ||
+        (request.remindersEnabled &&
+            (request.confirmedDoseText.trim().isEmpty ||
+                request.confirmedFrequency.trim().isEmpty)) ||
         request.confirmedInstruction.trim().isEmpty) {
       throw ArgumentError(
         'User-confirmed medicine and instructions are required.',
       );
     }
-    if (request.sourceType == MedicationSourceType.confirmedPrescription &&
-        request.prescriptionItemId == null) {
-      throw ArgumentError('A confirmed prescription item is required.');
-    }
+    if (!request.remindersEnabled) return;
     if (request.asNeeded && request.reminderTimes.isNotEmpty) {
       throw ArgumentError('As-needed tracking cannot create fixed reminders.');
     }
@@ -303,9 +409,12 @@ class LocalMedicationRepository implements MedicationRepository {
     int? intervalHours,
     DateTime? intervalAnchor,
     bool asNeeded = false,
+    String? timezone,
+    bool activate = false,
   }) async {
     final existing = await getPlan(planId);
     if (existing == null) throw StateError('Medication plan not found.');
+    if (timezone != null && timezone != 'UTC') tz.getLocation(timezone);
     final check = CreateMedicationPlanRequest(
       sourceType: existing.source.sourceType,
       prescriptionItemId: existing.plan.prescriptionItemId,
@@ -314,7 +423,7 @@ class LocalMedicationRepository implements MedicationRepository {
       confirmedFrequency: existing.plan.confirmedFrequency,
       confirmedInstruction: existing.source.confirmedInstruction,
       startDate: existing.plan.startDate,
-      timezone: existing.plan.timezone,
+      timezone: timezone ?? existing.plan.timezone,
       scheduleType: type,
       reminderTimes: reminderTimes,
       weekdays: weekdays,
@@ -345,7 +454,7 @@ class LocalMedicationRepository implements MedicationRepository {
         intervalHours: intervalHours,
         intervalAnchor: intervalAnchor,
         asNeeded: asNeeded,
-        planActive: existing.plan.active,
+        planActive: activate || existing.plan.active,
         now: now,
       );
       final planRow = await (_database.select(
@@ -355,14 +464,32 @@ class LocalMedicationRepository implements MedicationRepository {
         _database.medicationPlans,
       )..where((row) => row.id.equals(planId))).write(
         db.MedicationPlansCompanion(
+          active: Value(activate || existing.plan.active),
           updatedAt: Value(now),
           revision: Value(planRow.revision + 1),
+          timezone: Value(timezone ?? existing.plan.timezone),
         ),
       );
-      await _history(planId, 'schedule_edited', now, {
-        'schedule_type': type.name,
-        'reminder_count': reminderTimes.length,
-      });
+      if (activate && existing.medication.status != MedicationStatus.active) {
+        final medicationRow = await (_database.select(
+          _database.userMedications,
+        )..where((row) => row.id.equals(existing.medication.id))).getSingle();
+        await (_database.update(
+          _database.userMedications,
+        )..where((row) => row.id.equals(existing.medication.id))).write(
+          db.UserMedicationsCompanion(
+            status: Value(MedicationStatus.active.name),
+            updatedAt: Value(now),
+            revision: Value(medicationRow.revision + 1),
+          ),
+        );
+      }
+      await _history(
+        planId,
+        activate ? 'schedule_set' : 'schedule_edited',
+        now,
+        {'schedule_type': type.name, 'reminder_count': reminderTimes.length},
+      );
     });
     final updated = await getPlan(planId);
     if (updated == null) throw StateError('Medication plan not found.');
@@ -424,6 +551,22 @@ class LocalMedicationRepository implements MedicationRepository {
 
   @override
   Future<void> setPlanActive(String planId, bool active) async {
+    if (active) {
+      final details = await getPlan(planId);
+      if (details == null ||
+          details.plan.confirmedDoseText.trim().isEmpty ||
+          details.plan.confirmedFrequency.trim().isEmpty ||
+          !details.schedules.any(
+            (s) =>
+                s.asNeeded ||
+                s.times.isNotEmpty ||
+                (s.intervalHours != null && s.intervalAnchor != null),
+          )) {
+        throw StateError(
+          'Add confirmed dose instructions and choose reminder times first.',
+        );
+      }
+    }
     final now = _clock();
     await _database.transaction(() async {
       final planRow =
@@ -575,6 +718,109 @@ class LocalMedicationRepository implements MedicationRepository {
   }
 
   @override
+  Future<List<String>> medicationPlanIds(String medicationId) async =>
+      (await (_database.select(
+            _database.medicationPlans,
+          )..where((row) => row.medicationId.equals(medicationId))).get())
+          .map((row) => row.id)
+          .toList();
+
+  @override
+  Future<void> deleteMedication(String medicationId) async {
+    final now = _clock();
+    await _database.transaction(() async {
+      final planIds = (await medicationPlanIds(medicationId)).toSet();
+      final events = await (_database.select(
+        _database.doseEvents,
+      )..where((row) => row.medicationPlanId.isIn(planIds))).get();
+      final eventIds = events.map((event) => event.id).toSet();
+      final operations = await _database.select(_database.syncOperations).get();
+      final cancelled = <String>{};
+      final itemIds = <String>{};
+      for (final operation in operations) {
+        final operationPayload = jsonDecode(operation.payload) as Map;
+        final related =
+            (operation.entityType == 'medication_plan' &&
+                planIds.contains(operation.entityId)) ||
+            (operation.entityType == 'dose_event' &&
+                (eventIds.contains(operation.entityId) ||
+                    planIds.contains(operationPayload['medication_plan_id'])));
+        if (!related) continue;
+        final itemId =
+            (jsonDecode(operation.payload) as Map)['prescription_item_id'];
+        if (itemId is String) itemIds.add(itemId);
+        cancelled.add(operation.id);
+      }
+      // A deleted source scan may retain a minimal upload solely to verify a
+      // saved medicine. Remove this medicine from that temporary snapshot too.
+      for (final operation in operations.where(
+        (op) => op.entityType == 'prescription' && op.operationType == 'upsert',
+      )) {
+        final source = await (_database.select(
+          _database.prescriptions,
+        )..where((row) => row.id.equals(operation.entityId))).getSingleOrNull();
+        if (source?.deletedAt == null) continue;
+        final payload = (jsonDecode(operation.payload) as Map)
+            .cast<String, Object?>();
+        final items = payload['items'];
+        if (items is! List) continue;
+        final retained = items
+            .where((item) => !itemIds.contains((item as Map)['id']))
+            .toList();
+        if (retained.isEmpty) {
+          cancelled.add(operation.id);
+        } else if (retained.length != items.length) {
+          payload['items'] = retained;
+          await (_database.update(
+            _database.syncOperations,
+          )..where((row) => row.id.equals(operation.id))).write(
+            db.SyncOperationsCompanion(payload: Value(jsonEncode(payload))),
+          );
+        }
+      }
+      for (final id in cancelled) {
+        // Keep opaque completion markers so other pending deletions do not lose
+        // their prerequisites. All medicine names/instructions/logs are erased.
+        await (_database.update(
+          _database.syncOperations,
+        )..where((row) => row.id.equals(id))).write(
+          db.SyncOperationsCompanion(
+            payload: Value(jsonEncode({syncCancelledKey: true})),
+            syncState: const Value('synced'),
+            nextAttemptAt: const Value(null),
+            lastError: const Value(null),
+          ),
+        );
+      }
+      // Notify active dose-history subscriptions as well as enforcing the FK cleanup.
+      await (_database.delete(
+        _database.doseEvents,
+      )..where((row) => row.medicationPlanId.isIn(planIds))).go();
+      // Existing cascade FKs remove plans, source snapshots, schedules, times,
+      // dose revisions, notes, refill reminders and plan history atomically.
+      await (_database.delete(
+        _database.userMedications,
+      )..where((row) => row.id.equals(medicationId))).go();
+      final alreadyQueued = operations.any(
+        (operation) =>
+            operation.entityType == 'user_medication' &&
+            operation.entityId == medicationId &&
+            operation.operationType == 'delete',
+      );
+      if (!alreadyQueued) {
+        await _enqueue(
+          entityType: 'user_medication',
+          entityId: medicationId,
+          operationType: 'delete',
+          payload: {'id': medicationId},
+          tombstone: true,
+          now: now,
+        );
+      }
+    });
+  }
+
+  @override
   Future<DoseEvent> recordDose({
     required String planId,
     required String logicalDoseId,
@@ -586,26 +832,34 @@ class LocalMedicationRepository implements MedicationRepository {
     if (source != DoseEventSource.manualEntry && scheduledAt == null) {
       throw ArgumentError('Scheduled dose actions need their scheduled time.');
     }
-    final existing = await _latestDose(logicalDoseId);
-    if (existing != null &&
-        existing.action == action &&
-        existing.source == source) {
-      return existing;
-    }
-    final now = _clock();
-    final event = DoseEvent(
-      id: _uuid.v4(),
-      medicationPlanId: planId,
-      logicalDoseId: logicalDoseId,
-      scheduledAt: scheduledAt?.toUtc(),
-      action: action,
-      recordedAt: now,
-      source: source,
-      note: _nullable(note),
-      supersedesEventId: existing?.id,
-      revision: (existing?.revision ?? 0) + 1,
-    );
-    await _database.transaction(() async {
+    // Serialize lookup and insertion so notification/app double taps cannot
+    // create duplicate revisions for the same dose.
+    return _database.transaction(() async {
+      if (await getPlan(planId) == null) {
+        throw StateError('Medication plan not found.');
+      }
+      final existing = await _latestDose(logicalDoseId);
+      if (existing != null && existing.medicationPlanId != planId) {
+        throw ArgumentError('Dose belongs to another medication plan.');
+      }
+      if (existing != null &&
+          existing.action == action &&
+          existing.note == _nullable(note)) {
+        return existing;
+      }
+      final now = _clock();
+      final event = DoseEvent(
+        id: _uuid.v4(),
+        medicationPlanId: planId,
+        logicalDoseId: logicalDoseId,
+        scheduledAt: scheduledAt?.toUtc(),
+        action: action,
+        recordedAt: now,
+        source: source,
+        note: _nullable(note),
+        supersedesEventId: existing?.id,
+        revision: (existing?.revision ?? 0) + 1,
+      );
       await _insertDose(event);
       await _history(
         planId,
@@ -626,8 +880,8 @@ class LocalMedicationRepository implements MedicationRepository {
           now: now,
         );
       }
+      return event;
     });
-    return event;
   }
 
   @override
@@ -685,6 +939,20 @@ class LocalMedicationRepository implements MedicationRepository {
       );
 
   @override
+  Stream<List<DoseEvent>> watchDoseHistory({String? planId}) {
+    final query = _database.select(_database.doseEvents)
+      ..where((row) => row.deletedAt.isNull())
+      ..orderBy([
+        (row) => OrderingTerm.desc(row.recordedAt),
+        (row) => OrderingTerm.desc(row.rowId),
+      ]);
+    if (planId != null) {
+      query.where((row) => row.medicationPlanId.equals(planId));
+    }
+    return query.watch().map((rows) => rows.map(_dose).toList());
+  }
+
+  @override
   Future<List<DoseEvent>> doseHistory({
     String? planId,
     DateTime? from,
@@ -692,7 +960,10 @@ class LocalMedicationRepository implements MedicationRepository {
   }) async {
     final query = _database.select(_database.doseEvents)
       ..where((row) => row.deletedAt.isNull())
-      ..orderBy([(row) => OrderingTerm.desc(row.recordedAt)]);
+      ..orderBy([
+        (row) => OrderingTerm.desc(row.recordedAt),
+        (row) => OrderingTerm.desc(row.rowId),
+      ]);
     if (planId != null) {
       query.where((row) => row.medicationPlanId.equals(planId));
     }
@@ -985,7 +1256,7 @@ class LocalMedicationRepository implements MedicationRepository {
       'as_needed': request.asNeeded,
     },
     'medication_status': MedicationStatus.active.name,
-    'active': true,
+    'active': request.remindersEnabled,
     'updated_at': now.toIso8601String(),
   };
 

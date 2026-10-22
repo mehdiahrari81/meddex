@@ -2,12 +2,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../domain/models/confidence_result.dart';
+import '../../../domain/providers/medical_providers.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../settings/application/settings_controller.dart';
 import '../domain/prescription_models.dart';
 import '../domain/prescription_providers.dart';
 import '../domain/prescription_repository.dart';
 import 'prescription_providers.dart';
+import 'prescription_error_message.dart';
 
 enum PrescriptionProcessingStage {
   idle,
@@ -29,6 +31,7 @@ class PrescriptionWorkflowState {
     this.ocrResults = const [],
     this.unclassifiedLines = const [],
     this.errorCode,
+    this.errorMessage,
   });
 
   final PrescriptionProcessingStage stage;
@@ -38,6 +41,7 @@ class PrescriptionWorkflowState {
   final List<PrescriptionOcrResult> ocrResults;
   final List<String> unclassifiedLines;
   final String? errorCode;
+  final String? errorMessage;
 
   PrescriptionWorkflowState copyWith({
     PrescriptionProcessingStage? stage,
@@ -47,6 +51,7 @@ class PrescriptionWorkflowState {
     List<PrescriptionOcrResult>? ocrResults,
     List<String>? unclassifiedLines,
     String? errorCode,
+    String? errorMessage,
     bool clearError = false,
   }) => PrescriptionWorkflowState(
     stage: stage ?? this.stage,
@@ -56,6 +61,7 @@ class PrescriptionWorkflowState {
     ocrResults: ocrResults ?? this.ocrResults,
     unclassifiedLines: unclassifiedLines ?? this.unclassifiedLines,
     errorCode: clearError ? null : errorCode ?? this.errorCode,
+    errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
   );
 }
 
@@ -67,6 +73,7 @@ final prescriptionWorkflowControllerProvider =
 class PrescriptionWorkflowController
     extends Notifier<PrescriptionWorkflowState> {
   var _generation = 0;
+  var _loadVersion = 0;
 
   @override
   PrescriptionWorkflowState build() => const PrescriptionWorkflowState();
@@ -87,7 +94,7 @@ class PrescriptionWorkflowController
         state = state.copyWith(stage: PrescriptionProcessingStage.idle);
         return null;
       }
-      return _createDraft(captured);
+      return await _createDraft(captured);
     } on Object {
       state = state.copyWith(
         stage: PrescriptionProcessingStage.failed,
@@ -110,7 +117,7 @@ class PrescriptionWorkflowController
         state = state.copyWith(stage: PrescriptionProcessingStage.idle);
         return null;
       }
-      return _createDraft([captured]);
+      return await _createDraft([captured]);
     } on Object {
       state = state.copyWith(
         stage: PrescriptionProcessingStage.failed,
@@ -129,7 +136,7 @@ class PrescriptionWorkflowController
       final captured = await ref
           .read(prescriptionCaptureProvider)
           .persistCameraCapture(sourcePath);
-      return _createDraft([captured]);
+      return await _createDraft([captured]);
     } on Object {
       state = state.copyWith(
         stage: PrescriptionProcessingStage.failed,
@@ -152,7 +159,7 @@ class PrescriptionWorkflowController
         state = state.copyWith(stage: PrescriptionProcessingStage.idle);
         return null;
       }
-      return _createDraft(captured);
+      return await _createDraft(captured);
     } on Object {
       state = state.copyWith(
         stage: PrescriptionProcessingStage.failed,
@@ -196,14 +203,18 @@ class PrescriptionWorkflowController
   }
 
   Future<void> loadDraft(String prescriptionId) async {
+    final loadVersion = ++_loadVersion;
     final prescription = await _repository.get(prescriptionId);
+    if (loadVersion != _loadVersion) return;
     if (prescription == null) {
-      state = state.copyWith(
+      state = const PrescriptionWorkflowState(
         stage: PrescriptionProcessingStage.failed,
         errorCode: 'draft_not_found',
       );
       return;
     }
+    final pages = await _repository.pages(prescriptionId);
+    if (loadVersion != _loadVersion) return;
     state = PrescriptionWorkflowState(
       stage:
           prescription.pipelineState ==
@@ -211,11 +222,15 @@ class PrescriptionWorkflowController
           ? PrescriptionProcessingStage.reviewRequired
           : PrescriptionProcessingStage.idle,
       prescription: prescription,
-      pages: await _repository.pages(prescriptionId),
+      pages: pages,
     );
   }
 
-  Future<void> process(String prescriptionId) async {
+  Future<void> process(
+    String prescriptionId, {
+    OcrProvider? ocrOverride,
+    bool useGemini = false,
+  }) async {
     final generation = ++_generation;
     try {
       await loadDraft(prescriptionId);
@@ -234,20 +249,29 @@ class PrescriptionWorkflowController
         state = state.copyWith(
           stage: PrescriptionProcessingStage.checkingQuality,
         );
-        final quality = await Future.wait(
-          pages.map((page) => ref.read(qualityAnalyzerProvider).analyze(page)),
-        );
+        final quality = <CaptureQualityResult>[];
+        for (final page in pages) {
+          quality.add(await ref.read(qualityAnalyzerProvider).analyze(page));
+          if (generation != _generation) return;
+        }
         if (generation != _generation) return;
         state = state.copyWith(
           stage: PrescriptionProcessingStage.preprocessing,
           quality: quality,
         );
-        final processed = await Future.wait(
-          pages.map(
-            (page) => ref.read(imagePreprocessorProvider).process(page),
-          ),
-        );
-        if (generation != _generation) return;
+        final processed = <PreprocessedImage>[];
+        for (final page in pages) {
+          processed.add(
+            await ref.read(imagePreprocessorProvider).process(page),
+          );
+          if (generation != _generation) {
+            final store = ref.read(prescriptionImageStoreProvider);
+            for (final image in processed) {
+              await store.delete(image.processed);
+            }
+            return;
+          }
+        }
         await _repository.storePreprocessed(prescriptionId, processed, quality);
         pages = processed.map((page) => page.processed).toList(growable: false);
         state = state.copyWith(pages: pages);
@@ -258,11 +282,13 @@ class PrescriptionWorkflowController
         state = state.copyWith(
           stage: PrescriptionProcessingStage.readingPrescription,
         );
-        final results = await Future.wait(
-          pages.map(
-            (page) => ref.read(prescriptionOcrProvider).recognize(page),
-          ),
-        );
+        final OcrProvider ocr =
+            ocrOverride ?? ref.read<OcrProvider>(prescriptionOcrProvider);
+        final results = <PrescriptionOcrResult>[];
+        for (final page in pages) {
+          results.add(await ocr.recognize(page));
+          if (generation != _generation) return;
+        }
         if (generation != _generation) return;
         if (results.every((result) => result.fullText.trim().isEmpty)) {
           state = state.copyWith(
@@ -285,28 +311,52 @@ class PrescriptionWorkflowController
         final ocrResults = state.ocrResults.isNotEmpty
             ? state.ocrResults
             : await _loadOcrFromPrescription(refreshed!);
-        for (final result in ocrResults) {
+        String? parserVersion;
+        if (useGemini) {
           final parsed = await ref
-              .read(prescriptionParserProvider)
-              .parse(
+              .read(prescriptionTextStructurerProvider)
+              .structure(
                 prescriptionId: prescriptionId,
-                rawText: result.fullText,
-                pageNumber: result.pageNumber,
+                pages: [
+                  for (final result in ocrResults)
+                    if (result.fullText.trim().isNotEmpty)
+                      (pageNumber: result.pageNumber, text: result.fullText),
+                ],
               );
           items.addAll(parsed.items);
-          unknown.addAll(parsed.unclassifiedLines);
+          parserVersion = parsed.parserVersion;
+        } else {
+          for (final result in ocrResults) {
+            final parsed = await ref
+                .read(prescriptionParserProvider)
+                .parse(
+                  prescriptionId: prescriptionId,
+                  rawText: result.fullText,
+                  pageNumber: result.pageNumber,
+                );
+            items.addAll(parsed.items);
+            unknown.addAll(parsed.unclassifiedLines);
+          }
         }
         if (generation != _generation) return;
-        await _repository.storeParsedItems(prescriptionId, items);
+        await _repository.storeParsedItems(
+          prescriptionId,
+          items,
+          parserVersion: parserVersion,
+        );
         state = state.copyWith(unclassifiedLines: unknown);
       }
       await loadDraft(prescriptionId);
       state = state.copyWith(stage: PrescriptionProcessingStage.reviewRequired);
-    } on Object {
+    } on Object catch (error) {
       if (generation == _generation) {
         state = state.copyWith(
           stage: PrescriptionProcessingStage.failed,
-          errorCode: 'processing_failed',
+          errorCode:
+              state.stage == PrescriptionProcessingStage.organizingInformation
+              ? 'medicine_structuring_failed'
+              : 'processing_failed',
+          errorMessage: prescriptionErrorMessage(error),
         );
       }
     }
@@ -318,19 +368,36 @@ class PrescriptionWorkflowController
     await loadDraft(id);
   }
 
-  Future<void> reparseCorrectedText(String correctedText) async {
+  Future<void> reparseCorrectedText(
+    String correctedText, {
+    String? ocrProvider,
+    String? ocrProviderVersion,
+    bool useGemini = false,
+  }) async {
     final prescription = state.prescription!;
-    final parsed = await ref
-        .read(prescriptionParserProvider)
-        .parse(
-          prescriptionId: prescription.id,
-          rawText: correctedText,
-          pageNumber: 1,
-        );
+    final generation = ++_generation;
+    final parsed = useGemini
+        ? await ref
+              .read(prescriptionTextStructurerProvider)
+              .structure(
+                prescriptionId: prescription.id,
+                pages: [(pageNumber: 1, text: correctedText)],
+              )
+        : await ref
+              .read(prescriptionParserProvider)
+              .parse(
+                prescriptionId: prescription.id,
+                rawText: correctedText,
+                pageNumber: 1,
+              );
+    if (generation != _generation) return;
     await _repository.replaceParsedItemsFromCorrectedText(
       prescription.id,
       correctedText,
       parsed.items,
+      ocrProvider: ocrProvider,
+      ocrProviderVersion: ocrProviderVersion,
+      parserVersion: parsed.parserVersion,
     );
     await loadDraft(prescription.id);
   }
@@ -338,6 +405,8 @@ class PrescriptionWorkflowController
   Future<List<PrescriptionOcrResult>> _loadOcrFromPrescription(
     Prescription prescription,
   ) async {
+    final stored = await _repository.ocrResults(prescription.id);
+    if (stored.isNotEmpty) return stored;
     final raw = prescription.rawOcrText;
     if (raw == null) return const [];
     return [
@@ -408,6 +477,12 @@ class PrescriptionWorkflowController
     await loadDraft(id);
   }
 
+  Future<void> confirmReviewedItem(String itemId) async {
+    final id = state.prescription!.id;
+    await _repository.confirmReviewedItem(id, itemId);
+    await loadDraft(id);
+  }
+
   Future<void> addManualItem(Map<PrescriptionFieldType, String> values) async {
     final prescription = state.prescription!;
     final now = DateTime.now().toUtc();
@@ -444,9 +519,25 @@ class PrescriptionWorkflowController
   }
 
   Future<void> deleteItem(String itemId) async {
+    _generation++;
+    _loadVersion++;
     final id = state.prescription!.id;
     await _repository.deleteItem(id, itemId);
     await loadDraft(id);
+  }
+
+  Future<void> deletePrescription(String prescriptionId) async {
+    if (state.prescription?.id == prescriptionId) {
+      _generation++;
+      _loadVersion++;
+    }
+    await _repository.deletePrescription(prescriptionId);
+    if (state.prescription?.id == prescriptionId) {
+      state = const PrescriptionWorkflowState();
+    }
+    ref.invalidate(latestPrescriptionDraftProvider);
+    ref.invalidate(prescriptionDetailProvider(prescriptionId));
+    ref.invalidate(prescriptionPagesProvider(prescriptionId));
   }
 
   Future<void> saveUnresolved() async {
@@ -456,7 +547,43 @@ class PrescriptionWorkflowController
   }
 
   Future<void> confirmPrescription() async {
-    final id = state.prescription!.id;
+    final prescription = state.prescription!;
+    final id = prescription.id;
+    final retained = prescription.items
+        .where((item) => item.state != PrescriptionItemState.rejected)
+        .toList();
+    if (retained.isEmpty ||
+        retained.any(
+          (item) =>
+              !item.field(PrescriptionFieldType.medicationName).hasValue ||
+              item.state == PrescriptionItemState.detected ||
+              item.fields.values.any((field) => field.needsClarification),
+        )) {
+      throw StateError('Check unclear fields before confirming.');
+    }
+    for (final item in retained) {
+      for (final field in item.fields.values) {
+        if (field.hasValue && !field.userConfirmed) {
+          await _repository.confirmField(id, item.id, field.type);
+        }
+      }
+      // The final Add action explicitly confirms the entire reviewed list.
+      // An explanation alone never enters this confirmation path.
+      if (item.state != PrescriptionItemState.readyForLookup) {
+        if (item.state != PrescriptionItemState.confirmedByUser) {
+          await _repository.setItemState(
+            id,
+            item.id,
+            PrescriptionItemState.confirmedByUser,
+          );
+        }
+        await _repository.setItemState(
+          id,
+          item.id,
+          PrescriptionItemState.readyForLookup,
+        );
+      }
+    }
     await _repository.confirmPrescription(id);
     final deleteImages =
         ref

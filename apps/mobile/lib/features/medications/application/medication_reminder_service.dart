@@ -1,5 +1,6 @@
 import '../../../core/notifications/notification_service.dart';
 import '../domain/medication_models.dart';
+import '../domain/dose_history.dart';
 import '../domain/medication_repository.dart';
 import 'schedule_engine.dart';
 
@@ -8,17 +9,26 @@ class MedicationReminderService {
     required MedicationRepository repository,
     required NotificationScheduler scheduler,
     ScheduleEngine engine = const ScheduleEngine(),
-  }) => MedicationReminderService._(repository, scheduler, engine);
+    bool Function()? notificationsEnabled,
+  }) => MedicationReminderService._(
+    repository,
+    scheduler,
+    engine,
+    notificationsEnabled ?? _enabled,
+  );
 
   const MedicationReminderService._(
     this._repository,
     this._scheduler,
     this._engine,
+    this._notificationsEnabled,
   );
 
   final MedicationRepository _repository;
   final NotificationScheduler _scheduler;
   final ScheduleEngine _engine;
+  final bool Function() _notificationsEnabled;
+  static bool _enabled() => true;
 
   /// Reconstructs a bounded rolling window. Android persists these alarms and
   /// restores them after reboot/app update; app startup rebuilds the window as
@@ -29,7 +39,12 @@ class MedicationReminderService {
     int maximumPending = 60,
   }) async {
     await _scheduler.cancelAll();
+    if (!_notificationsEnabled()) return 0;
     final start = (now ?? DateTime.now()).toUtc();
+    final recorded = {
+      for (final event in currentDoseEvents(await _repository.doseHistory()))
+        if (doseWasRecorded(event.action)) event.logicalDoseId,
+    };
     final candidates = <({MedicationPlanDetails details, DateTime time})>[];
     for (final details in plans) {
       if (!details.plan.active ||
@@ -43,13 +58,21 @@ class MedicationReminderService {
           from: start,
           to: start.add(const Duration(days: 30)),
         )) {
-          candidates.add((details: details, time: occurrence));
+          if (!recorded.contains(
+            _engine.logicalDoseId(details.plan.id, occurrence),
+          )) {
+            candidates.add((details: details, time: occurrence));
+          }
         }
       }
     }
     candidates.sort((left, right) => left.time.compareTo(right.time));
     final privacy = await _repository.loadPrivacy();
     for (final candidate in candidates.take(maximumPending)) {
+      if (!_notificationsEnabled()) {
+        await _scheduler.cancelAll();
+        return 0;
+      }
       final details = candidate.details;
       final logicalId = _engine.logicalDoseId(details.plan.id, candidate.time);
       await _scheduler.schedule(
@@ -64,6 +87,10 @@ class MedicationReminderService {
           privacy: privacy.notificationPrivacy,
         ),
       );
+    }
+    if (!_notificationsEnabled()) {
+      await _scheduler.cancelAll();
+      return 0;
     }
     return candidates.length.clamp(0, maximumPending);
   }
@@ -110,16 +137,21 @@ class MedicationReminderService {
     }
   }
 
+  Future<void> cancelDose(String logicalDoseId) =>
+      _scheduler.cancel(stableNotificationId(logicalDoseId));
+
   Future<void> snooze({
     required MedicationPlanDetails details,
     required ScheduledDose dose,
     required Duration duration,
   }) async {
+    if (!_notificationsEnabled()) return;
     if (duration < const Duration(minutes: 5) ||
         duration > const Duration(hours: 2)) {
       throw ArgumentError('Choose a snooze between 5 minutes and 2 hours.');
     }
     final privacy = await _repository.loadPrivacy();
+    if (!_notificationsEnabled()) return;
     final snoozedAt = DateTime.now().toUtc().add(duration);
     await _scheduler.schedule(
       ReminderNotification(
@@ -133,6 +165,7 @@ class MedicationReminderService {
         privacy: privacy.notificationPrivacy,
       ),
     );
+    if (!_notificationsEnabled()) await _scheduler.cancelAll();
   }
 
   int stableNotificationId(String value) {

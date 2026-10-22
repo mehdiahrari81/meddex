@@ -2,6 +2,7 @@ import secrets
 from datetime import timedelta
 from uuid import UUID, uuid4
 
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -92,9 +93,11 @@ class AuthService:
 
     def refresh(self, refresh_token: str) -> TokenResponse:
         session_id = token_identifier(refresh_token)
-        auth_session = self.sessions.by_id(session_id)
+        auth_session = self.db.scalar(
+            select(AuthSession).where(AuthSession.id == session_id).with_for_update()
+        )
         now = utc_now()
-        if auth_session is None:
+        if auth_session is None or auth_session.audience != "mediexplain-mobile":
             raise SessionExpiredError
         if not secrets.compare_digest(
             auth_session.refresh_token_hash, hash_opaque_token(refresh_token)

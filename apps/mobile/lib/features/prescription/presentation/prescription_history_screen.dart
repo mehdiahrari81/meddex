@@ -1,3 +1,4 @@
+import 'delete_prescription.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,7 +16,8 @@ import 'prescription_review_screen.dart';
 enum _HistoryFilter { all, verified, unresolved, draft }
 
 class PrescriptionHistoryScreen extends ConsumerStatefulWidget {
-  const PrescriptionHistoryScreen({super.key});
+  const PrescriptionHistoryScreen({this.showDraftsOnly = false, super.key});
+  final bool showDraftsOnly;
 
   @override
   ConsumerState<PrescriptionHistoryScreen> createState() =>
@@ -25,7 +27,9 @@ class PrescriptionHistoryScreen extends ConsumerStatefulWidget {
 class _PrescriptionHistoryScreenState
     extends ConsumerState<PrescriptionHistoryScreen> {
   String _query = '';
-  _HistoryFilter _filter = _HistoryFilter.all;
+  late _HistoryFilter _filter = widget.showDraftsOnly
+      ? _HistoryFilter.draft
+      : _HistoryFilter.all;
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +80,7 @@ class _PrescriptionHistoryScreenState
                         _HistoryFilter.all => 'All',
                         _HistoryFilter.verified => 'Verified',
                         _HistoryFilter.unresolved => 'Unresolved',
-                        _HistoryFilter.draft => 'Drafts',
+                        _HistoryFilter.draft => 'Unfinished',
                       }),
                       selected: _filter == filter,
                       onSelected: (_) => setState(() => _filter = filter),
@@ -116,17 +120,18 @@ class _PrescriptionHistoryScreenState
       _HistoryFilter.draft =>
         value.pipelineState !=
                 PrescriptionPipelineState.readyForMedicationLookup &&
-            value.unresolvedCount == 0,
+            value.pipelineState != PrescriptionPipelineState.userConfirmed,
     };
   }
 }
 
-class _HistoryCard extends StatelessWidget {
+class _HistoryCard extends ConsumerWidget {
   const _HistoryCard({required this.value});
   final PrescriptionHistoryEntry value;
 
   @override
-  Widget build(BuildContext context) => AppCard(
+  Widget build(BuildContext context, WidgetRef ref) => AppCard(
+    key: ValueKey(value.id),
     semanticLabel:
         '${DateFormat.yMMMd().format(value.captureDate.toLocal())}. ${value.itemCount} medicine items. ${value.unresolvedCount} unresolved.',
     onTap: () => context.push('/prescriptions/${value.id}'),
@@ -144,7 +149,7 @@ class _HistoryCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                DateFormat.yMMMd().format(value.captureDate.toLocal()),
+                prescriptionCaptureLabel(value.captureDate),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               Text(
@@ -164,6 +169,16 @@ class _HistoryCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
+        IconButton(
+          tooltip: 'Delete prescription',
+          onPressed: () => deletePrescriptionWithConfirmation(
+            context,
+            ref,
+            value.id,
+            capturedAt: value.captureDate,
+          ),
+          icon: const Icon(Icons.delete_outline_rounded),
         ),
         const Icon(Icons.chevron_right_rounded),
       ],
@@ -370,30 +385,13 @@ class PrescriptionDetailScreen extends ConsumerWidget {
   }
 
   Future<void> _deletePrescription(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete entire prescription?'),
-        content: const Text(
-          'This removes its private images and local structured fields. A synced deletion will be queued if signed in.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete prescription'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      await ref
-          .read(prescriptionRepositoryProvider)
-          .deletePrescription(prescriptionId);
-      if (context.mounted) context.go('/prescriptions/history');
+    if (await deletePrescriptionWithConfirmation(
+          context,
+          ref,
+          prescriptionId,
+        ) &&
+        context.mounted) {
+      context.go('/prescriptions/history');
     }
   }
 }

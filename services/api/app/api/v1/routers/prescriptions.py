@@ -236,11 +236,20 @@ def delete_prescription(
     identity: CurrentIdentityDependency,
     db: DatabaseDependency,
 ) -> Response:
-    value = _owned(db, identity.user.id, prescription_id)
-    value.deleted_at = utc_now()
-    value.updated_at = value.deleted_at
-    value.revision += 1
-    db.commit()
+    # Offline drafts may never have reached the server, and a successful delete
+    # can be retried after its response is lost. Both cases are already complete.
+    value = db.scalar(
+        select(Prescription).where(
+            Prescription.id == prescription_id,
+            Prescription.user_id == identity.user.id,
+            Prescription.deleted_at.is_(None),
+        )
+    )
+    if value is not None:
+        value.deleted_at = utc_now()
+        value.updated_at = value.deleted_at
+        value.revision += 1
+        db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

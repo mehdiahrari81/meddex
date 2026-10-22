@@ -89,15 +89,15 @@ _ProcessedBytes _preprocess(Uint8List bytes) {
   var output = img.bakeOrientation(decoded);
   final operations = <String>['orientation'];
   final longest = max(output.width, output.height);
-  if (longest > 2200) {
-    final scale = 2200 / longest;
+  if (longest > 3200) {
+    final scale = 3200 / longest;
     output = img.copyResize(
       output,
       width: (output.width * scale).round(),
       height: (output.height * scale).round(),
       interpolation: img.Interpolation.average,
     );
-    operations.add('resize_max_2200');
+    operations.add('resize_max_3200');
   }
   final mean = _meanLuminance(output);
   if (mean < 80 || mean > 205) {
@@ -109,7 +109,7 @@ _ProcessedBytes _preprocess(Uint8List bytes) {
     operations.add('conservative_contrast');
   }
   return _ProcessedBytes(
-    bytes: Uint8List.fromList(img.encodeJpg(output, quality: 90)),
+    bytes: Uint8List.fromList(img.encodeJpg(output, quality: 95)),
     operations: operations,
     originalWidth: originalWidth,
     originalHeight: originalHeight,

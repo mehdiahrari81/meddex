@@ -165,6 +165,9 @@ class AiAnswerRead(StrictSchema):
     referenced_medication_ids: list[UUID]
     language: str
     ai_provider_used: bool
+    generation_provider: str | None = None
+    generation_model: str | None = None
+    provider_fallback_reason: str | None = None
 
 
 class InformationReportCreate(StrictSchema):

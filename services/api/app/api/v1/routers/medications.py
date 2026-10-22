@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Response
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import selectinload
 
 from app.api.dependencies import CurrentIdentityDependency, DatabaseDependency
@@ -9,11 +9,14 @@ from app.core.security import ensure_utc
 from app.core.time import utc_now
 from app.models import (
     DoseEvent,
+    MedicationNote,
     MedicationPlan,
+    MedicationPlanHistory,
     MedicationPlanSource,
     MedicationSchedule,
     Prescription,
     PrescriptionItem,
+    RefillReminder,
     ReminderTime,
     UserMedication,
 )
@@ -116,12 +119,16 @@ def upsert_plan(
 ) -> MedicationPlanRead:
     if payload.id != plan_id:
         raise HTTPException(status_code=422, detail="Plan ID does not match path")
-    if payload.source_type == "confirmedPrescription" and not _verified_prescription_item(
-        db, identity.user.id, payload.prescription_item_id or ""
-    ):
-        raise HTTPException(
-            status_code=409, detail="Unverified prescription data cannot create a plan"
+    medication = db.scalar(
+        select(UserMedication)
+        .where(
+            UserMedication.user_id == identity.user.id,
+            UserMedication.client_id == payload.medication_id,
         )
+        .with_for_update()
+    )
+    if medication is not None and medication.deleted_at is not None:
+        raise HTTPException(status_code=410, detail="Saved medication was deleted")
     existing = db.scalar(
         select(MedicationPlan)
         .options(
@@ -131,25 +138,47 @@ def upsert_plan(
         )
         .where(MedicationPlan.user_id == identity.user.id, MedicationPlan.client_id == plan_id)
     )
+    if existing is not None and existing.medication.client_id != payload.medication_id:
+        raise HTTPException(status_code=409, detail="Medication identity cannot be changed")
+    # An owned saved medicine keeps its reviewed source snapshot after scan deletion.
+    existing_source = (
+        existing is not None
+        and existing.source.source_type == payload.source_type
+        and (
+            payload.prescription_item_id == existing.prescription_item_client_id
+            or payload.prescription_item_id is None
+        )
+    )
+    if (
+        payload.source_type == "confirmedPrescription"
+        and not existing_source
+        and not _verified_prescription_item(
+            db, identity.user.id, payload.prescription_item_id or ""
+        )
+    ):
+        raise HTTPException(
+            status_code=409, detail="Unverified prescription data cannot create a plan"
+        )
     if existing is not None and ensure_utc(payload.updated_at) <= ensure_utc(existing.updated_at):
         return _read(existing)
     now = utc_now()
     if existing is None:
-        medication = UserMedication(
-            client_id=payload.medication_id,
-            user_id=identity.user.id,
-            prescription_item_client_id=payload.prescription_item_id,
-            source_type=payload.source_type,
-            display_name=payload.display_name,
-            strength=payload.strength,
-            dosage_form=payload.dosage_form,
-            information_status="unavailable",
-            status=payload.medication_status,
-            created_at=now,
-            updated_at=payload.updated_at,
-        )
-        db.add(medication)
-        db.flush()
+        if medication is None:
+            medication = UserMedication(
+                client_id=payload.medication_id,
+                user_id=identity.user.id,
+                prescription_item_client_id=payload.prescription_item_id,
+                source_type=payload.source_type,
+                display_name=payload.display_name,
+                strength=payload.strength,
+                dosage_form=payload.dosage_form,
+                information_status="unavailable",
+                status=payload.medication_status,
+                created_at=now,
+                updated_at=payload.updated_at,
+            )
+            db.add(medication)
+            db.flush()
         existing = MedicationPlan(
             client_id=payload.id,
             user_id=identity.user.id,
@@ -244,6 +273,72 @@ def delete_plan(
     plan.deleted_at = utc_now()
     plan.updated_at = plan.deleted_at
     plan.revision += 1
+    db.commit()
+    return Response(status_code=204)
+
+
+@router.delete("/saved/{medication_id}", status_code=204)
+def delete_saved_medication(
+    medication_id: str,
+    identity: CurrentIdentityDependency,
+    db: DatabaseDependency,
+) -> Response:
+    if not medication_id or len(medication_id) > 100:
+        raise HTTPException(status_code=422, detail="Invalid medication ID")
+    now = utc_now()
+    medication = db.scalar(
+        select(UserMedication)
+        .where(
+            UserMedication.user_id == identity.user.id,
+            UserMedication.client_id == medication_id,
+        )
+        .with_for_update()
+    )
+    if medication is None:
+        medication = UserMedication(
+            user_id=identity.user.id,
+            client_id=medication_id,
+            source_type="",
+            display_name="",
+            information_status="unavailable",
+            status="archived",
+            created_at=now,
+            updated_at=now,
+            deleted_at=now,
+        )
+        db.add(medication)
+    else:
+        plans = db.scalars(
+            select(MedicationPlan).where(
+                MedicationPlan.user_id == identity.user.id,
+                MedicationPlan.medication_id == medication.id,
+            )
+        ).all()
+        plan_ids = [plan.id for plan in plans]
+        for model in (DoseEvent, RefillReminder, MedicationPlanHistory):
+            db.execute(
+                delete(model).where(model.user_id == identity.user.id, model.plan_id.in_(plan_ids))
+            )
+        db.execute(
+            delete(MedicationNote).where(
+                MedicationNote.user_id == identity.user.id,
+                MedicationNote.medication_id == medication.id,
+            )
+        )
+        for plan in plans:
+            db.delete(plan)
+        # Keep only an opaque deletion marker to reject delayed upload retries.
+        medication.display_name = ""
+        medication.source_type = ""
+        medication.prescription_item_client_id = None
+        medication.medication_information_id = None
+        medication.generic_name = None
+        medication.brand_name = None
+        medication.strength = None
+        medication.dosage_form = None
+        medication.status = "archived"
+        medication.deleted_at = now
+        medication.updated_at = now
     db.commit()
     return Response(status_code=204)
 

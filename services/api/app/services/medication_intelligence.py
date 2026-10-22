@@ -35,6 +35,7 @@ from app.providers.medication import (
     ProviderFact,
     RegulatoryDrugLabelProvider,
     RxNormProvider,
+    RxNormReferenceProvider,
     normalize_search,
 )
 from app.schemas.intelligence import MatchEvidence, MedicationCandidateRead
@@ -50,6 +51,7 @@ class MedicationIntelligenceService:
             follow_redirects=False,
             headers={"User-Agent": "MediExplain/1.0 medical-information-client"},
         )
+        self.reference = RxNormReferenceProvider(db)
         self.rxnorm = RxNormProvider(self.client)
         self.medlineplus = MedlinePlusProvider(self.client)
         self.dailymed = DailyMedProvider(self.client)
@@ -99,6 +101,10 @@ class MedicationIntelligenceService:
             )
         if self._provider_enabled("rxnorm_provider", self.settings.rxnorm_enabled):
             candidates.extend(
+                self._rank(item, raw_value, strength, dosage_form, country)
+                for item in self.reference.search(raw_value, country=country)
+            )
+            candidates.extend(
                 self._run_search(self.rxnorm, raw_value, country, strength, dosage_form, failures)
             )
         deduped = self._deduplicate(candidates)
@@ -130,6 +136,17 @@ class MedicationIntelligenceService:
         if candidate_data is None:
             raise ValueError("candidate_not_in_resolution")
         candidate = MedicationCandidateRead.model_validate(candidate_data)
+        identity = self.reference_identity(candidate)
+        resolution.selected_candidate_id = candidate_id
+        resolution.medication_id = identity.id
+        resolution.state = identity.verification_state
+        resolution.updated_at = utc_now()
+        self.db.commit()
+        self.refresh_facts(identity)
+        return resolution, self.identity(identity.id) or identity
+
+    def reference_identity(self, candidate: MedicationCandidateRead) -> MedicationIdentity:
+        """Cache a trusted reference identity without confirming any patient prescription."""
         mapping = self.db.scalar(
             select(MedicationProviderMapping).where(
                 MedicationProviderMapping.provider == candidate.provider,
@@ -185,13 +202,8 @@ class MedicationIntelligenceService:
             ]
             self.db.add(identity)
             self.db.flush()
-        resolution.selected_candidate_id = candidate_id
-        resolution.medication_id = identity.id
-        resolution.state = identity.verification_state
-        resolution.updated_at = utc_now()
         self.db.commit()
-        self.refresh_facts(identity)
-        return resolution, self.identity(identity.id) or identity
+        return identity
 
     def identity(self, medication_id: UUID) -> MedicationIdentity | None:
         return self.db.scalar(
@@ -203,6 +215,7 @@ class MedicationIntelligenceService:
                 selectinload(MedicationIdentity.facts),
             )
             .where(MedicationIdentity.id == medication_id)
+            .execution_options(populate_existing=True)
         )
 
     def refresh_facts(self, identity: MedicationIdentity) -> str:

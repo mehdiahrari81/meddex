@@ -1,7 +1,9 @@
+# Gemini first, with quota/availability fallback to the host's Ollama server.
 services:
   api:
+    env_file:
+      - path: ./services/api/.env
+        required: false
     environment:
-      MEDIEXPLAIN_AI_PROVIDER: ollama
-      MEDIEXPLAIN_AI_BASE_URL: http://host.docker.internal:11434
-      MEDIEXPLAIN_AI_MODEL: ${MEDIEXPLAIN_AI_MODEL:-qwen3:8b}
-      MEDIEXPLAIN_AI_TIMEOUT_SECONDS: "60"
+      MEDIEXPLAIN_AI_PROVIDER: gemini_ollama
+      MEDIEXPLAIN_OLLAMA_BASE_URL: ${MEDIEXPLAIN_OLLAMA_DOCKER_BASE_URL:-http://host.docker.internal:11434}

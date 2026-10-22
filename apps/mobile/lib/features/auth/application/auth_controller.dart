@@ -5,6 +5,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../app/config/app_config.dart';
 import '../../../core/auth/auth_repository.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/network/development_server.dart';
+import '../../settings/application/settings_controller.dart';
 import '../../../core/storage/session_vault.dart';
 import '../../../domain/models/session.dart';
 
@@ -19,15 +21,48 @@ class AuthState {
   final Session? session;
 }
 
-final appConfigProvider = Provider<AppConfig>(
+final bundledAppConfigProvider = Provider<AppConfig>(
   (ref) => AppConfig.fromEnvironment(),
 );
+
+final appConfigProvider = Provider<AppConfig>((ref) {
+  final config = ref.watch(bundledAppConfigProvider);
+  final override = ref.watch(
+    settingsControllerProvider.select(
+      (settings) => settings.valueOrNull?.developmentServerUrl ?? '',
+    ),
+  );
+  final automatic = ref.watch(
+    settingsControllerProvider.select(
+      (settings) => settings.valueOrNull?.automaticServerConnection ?? true,
+    ),
+  );
+  if (automatic && config.apiBaseUrl.host.endsWith('.local')) return config;
+  if (config.environment == AppEnvironment.production || override.isEmpty) {
+    return config;
+  }
+  try {
+    return AppConfig(
+      environment: config.environment,
+      apiBaseUrl: validateDevelopmentServerUrl(override),
+      enableDebugLogs: config.enableDebugLogs,
+    );
+  } on FormatException {
+    return config;
+  }
+});
 final sessionVaultProvider = Provider<SessionVault>(
-  (ref) => SecureSessionVault(const FlutterSecureStorage()),
+  (ref) => SecureSessionVault(
+    const FlutterSecureStorage(
+      iOptions: IOSOptions(
+        accessibility: KeychainAccessibility.unlocked_this_device,
+      ),
+    ),
+  ),
 );
 final sessionManagerProvider = Provider<SessionManager>((ref) {
   final config = ref.watch(appConfigProvider);
-  return SessionManager(
+  final manager = SessionManager(
     refreshClient: Dio(
       BaseOptions(
         connectTimeout: const Duration(seconds: 5),
@@ -38,13 +73,17 @@ final sessionManagerProvider = Provider<SessionManager>((ref) {
     vault: ref.watch(sessionVaultProvider),
     baseUrl: config.apiBaseUrl,
   );
+  ref.onDispose(manager.dispose);
+  return manager;
 });
 final apiClientProvider = Provider<ApiClient>((ref) {
   final config = ref.watch(appConfigProvider);
-  return ApiClient(
+  final client = ApiClient(
     baseUrl: config.apiBaseUrl,
     sessionManager: ref.watch(sessionManagerProvider),
   );
+  ref.onDispose(() => client.dio.close(force: true));
+  return client;
 });
 final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => ApiAuthRepository(
@@ -94,6 +133,7 @@ class AuthController extends AsyncNotifier<AuthState> {
   }
 
   Future<void> continueAsGuest() async {
+    await _repository.signOut();
     state = const AsyncData(AuthState.guest());
   }
 

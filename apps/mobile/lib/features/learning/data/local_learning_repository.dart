@@ -15,10 +15,12 @@ class LocalLearningRepository implements LearningRepository {
     this._database,
     this._sync, {
     this.includeReviewedContent = true,
+    this.clock = DateTime.now,
   });
   final db.AppDatabase _database;
   final SyncCoordinator _sync;
   final bool includeReviewedContent;
+  final DateTime Function() clock;
 
   List<String> get _publishedStatuses => includeReviewedContent
       ? const ['reviewed', 'approved']
@@ -30,7 +32,8 @@ class LocalLearningRepository implements LearningRepository {
     String? categoryId,
   }) async {
     final query = _database.select(_database.learningLessons)
-      ..where((row) => row.reviewStatus.isIn(_publishedStatuses));
+      ..where((row) => row.reviewStatus.isIn(_publishedStatuses))
+      ..orderBy([(row) => OrderingTerm.asc(row.title)]);
     if (difficulty != null) {
       query.where((row) => row.difficulty.equals(difficulty.name));
     }
@@ -110,16 +113,22 @@ class LocalLearningRepository implements LearningRepository {
 
   @override
   Future<void> saveLessonProgress(LessonProgress progress) async {
+    final previous = await lessonProgress(progress.lessonId);
+    // Revisiting a completed lesson must not erase earned progress.
+    final completedAt = previous?.completedAt ?? progress.completedAt;
+    final percentage = completedAt != null
+        ? 1.0
+        : progress.completionPercentage;
     await _database
         .into(_database.lessonProgressEntries)
         .insertOnConflictUpdate(
           db.LessonProgressEntriesCompanion.insert(
             lessonId: progress.lessonId,
             lastSectionIndex: progress.lastSectionIndex,
-            completionPercentage: progress.completionPercentage,
+            completionPercentage: percentage,
             startedAt: progress.startedAt,
             updatedAt: progress.updatedAt,
-            completedAt: Value(progress.completedAt),
+            completedAt: Value(completedAt),
             reviewRequired: Value(progress.reviewRequired),
           ),
         );
@@ -130,10 +139,10 @@ class LocalLearningRepository implements LearningRepository {
       payload: jsonEncode({
         'lesson_id': progress.lessonId,
         'last_section_index': progress.lastSectionIndex,
-        'completion_percentage': progress.completionPercentage,
+        'completion_percentage': percentage,
         'started_at': progress.startedAt.toIso8601String(),
         'updated_at': progress.updatedAt.toIso8601String(),
-        'completed_at': progress.completedAt?.toIso8601String(),
+        'completed_at': completedAt?.toIso8601String(),
         'review_required': progress.reviewRequired,
       }),
     );
@@ -149,13 +158,19 @@ class LocalLearningRepository implements LearningRepository {
         .customSelect(
           '''
       SELECT f.* FROM flashcards f
+      JOIN content_sources c ON c.id = f.source_id
       LEFT JOIN flashcard_schedules s ON s.flashcard_id = f.id
-      WHERE s.flashcard_id IS NULL OR s.next_review_at <= ?
+      WHERE c.review_status IN (${_publishedStatuses.map((s) => "'$s'").join(',')})
+        AND (s.flashcard_id IS NULL OR s.next_review_at <= ?)
       ORDER BY COALESCE(s.next_review_at, '1970-01-01') ASC, f.id ASC
       LIMIT ?
       ''',
           variables: [Variable(now), Variable(limit.clamp(1, 100))],
-          readsFrom: {_database.flashcards, _database.flashcardSchedules},
+          readsFrom: {
+            _database.flashcards,
+            _database.flashcardSchedules,
+            _database.contentSources,
+          },
         )
         .get();
     final result = <Flashcard>[];
@@ -330,7 +345,10 @@ class LocalLearningRepository implements LearningRepository {
   }
 
   @override
-  Future<LearningStreak> streak() async {
+  Future<LearningStreak> streak() async =>
+      const StreakCalculator().currentOn(await _storedStreak(), clock());
+
+  Future<LearningStreak> _storedStreak() async {
     final rows =
         await (_database.select(_database.learningStreaks)..orderBy([
               (row) => OrderingTerm.desc(row.lastLearningDate),
@@ -355,7 +373,7 @@ class LocalLearningRepository implements LearningRepository {
   Future<void> recordMeaningfulActivity(DateTime occurredAt) async {
     await _database.transaction(() async {
       final updated = const StreakCalculator().record(
-        await streak(),
+        await _storedStreak(),
         occurredAt,
       );
       await _database
@@ -386,17 +404,30 @@ class LocalLearningRepository implements LearningRepository {
 
   @override
   Future<LearningDashboard> dashboard() async {
-    final lessonsCompleted =
-        await (_database.selectOnly(_database.lessonProgressEntries)
-              ..addColumns([_database.lessonProgressEntries.lessonId.count()])
-              ..where(_database.lessonProgressEntries.completedAt.isNotNull()))
-            .map(
-              (row) =>
-                  row.read(_database.lessonProgressEntries.lessonId.count()) ??
-                  0,
-            )
-            .getSingle();
-    final reviews = await _database.select(_database.flashcardSchedules).get();
+    final publishedLessons = await (_database.select(
+      _database.learningLessons,
+    )..where((row) => row.reviewStatus.isIn(_publishedStatuses))).get();
+    final lessonIds = publishedLessons.map((row) => row.id).toSet();
+    final progress = await _database
+        .select(_database.lessonProgressEntries)
+        .get();
+    final lessonsCompleted = progress
+        .where(
+          (row) => lessonIds.contains(row.lessonId) && row.completedAt != null,
+        )
+        .length;
+    final publishedSources = await (_database.select(
+      _database.contentSources,
+    )..where((row) => row.reviewStatus.isIn(_publishedStatuses))).get();
+    final sourceIds = publishedSources.map((row) => row.id).toSet();
+    final cards = (await _database.select(_database.flashcards).get())
+        .where((row) => sourceIds.contains(row.sourceId))
+        .toList();
+    final cardIds = cards.map((row) => row.id).toSet();
+    final reviews = (await _database.select(_database.flashcardSchedules).get())
+        .where((row) => cardIds.contains(row.flashcardId))
+        .toList();
+    final schedules = {for (final row in reviews) row.flashcardId: row};
     final attempts = await _database.select(_database.quizAttempts).get();
     final correct = attempts.fold<int>(
       0,
@@ -410,13 +441,16 @@ class LocalLearningRepository implements LearningRepository {
     return LearningDashboard(
       termsLearned: reviews.where((review) => review.repetitions >= 2).length,
       lessonsCompleted: lessonsCompleted,
+      totalLessons: publishedLessons.length,
+      totalFlashcards: cards.length,
       flashcardsReviewed: reviews
           .where((review) => review.lastReviewedAt != null)
           .length,
       quizAccuracy: total == 0 ? 0 : correct / total,
-      dueReviews: reviews
-          .where((review) => !review.nextReviewAt.isAfter(now))
-          .length,
+      dueReviews: cards.where((card) {
+        final schedule = schedules[card.id];
+        return schedule == null || !schedule.nextReviewAt.isAfter(now);
+      }).length,
       streak: await streak(),
     );
   }

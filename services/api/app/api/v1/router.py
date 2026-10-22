@@ -10,6 +10,7 @@ from app.api.v1.routers import (
     learning,
     medications,
     module2_user,
+    prescription_ocr,
     prescriptions,
     terminology,
     users,
@@ -27,4 +28,5 @@ api_router.include_router(learning.router)
 api_router.include_router(content.router)
 api_router.include_router(module2_user.router)
 api_router.include_router(prescriptions.router)
+api_router.include_router(prescription_ocr.router)
 api_router.include_router(medications.router)

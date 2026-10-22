@@ -36,6 +36,7 @@ void main() {
       userMode: UserMode.student,
       explanationLevel: ExplanationLevel.technical,
       languageCode: 'ur',
+      developmentServerUrl: 'http://192.168.100.59:8000/api/v1/',
       theme: AppThemePreference.dark,
       textScale: 1.25,
       reducedMotion: true,
@@ -51,6 +52,12 @@ void main() {
     expect(restored.userMode, UserMode.student);
     expect(restored.explanationLevel, ExplanationLevel.technical);
     expect(restored.languageCode, 'ur');
+    expect(restored.developmentServerUrl, expected.developmentServerUrl);
+    await repository.clearLocalPreferences();
+    expect(
+      (await repository.load()).developmentServerUrl,
+      expected.developmentServerUrl,
+    );
     expect(restored.theme, AppThemePreference.dark);
     expect(restored.textScale, 1.25);
     expect(restored.reducedMotion, isTrue);
@@ -73,5 +80,37 @@ void main() {
     final restored = await repository.load();
     expect(restored.onboardingComplete, isFalse);
     expect(restored.userMode, UserMode.student);
+  });
+  test(
+    'old LAN address upgrades to automatic; hosted address stays manual',
+    () async {
+      final preferences = SharedPreferencesAsync();
+      final repository = SharedPreferencesSettingsRepository(preferences);
+      await preferences.setString(
+        'connection.development_server_url',
+        'http://192.168.100.59:8000/api/v1/',
+      );
+      expect((await repository.load()).automaticServerConnection, isTrue);
+      await preferences.setString(
+        'connection.development_server_url',
+        'https://api.example.com/api/v1/',
+      );
+      expect((await repository.load()).automaticServerConnection, isFalse);
+    },
+  );
+
+  test('explicit manual connection survives reload and local reset', () async {
+    final repository = SharedPreferencesSettingsRepository(
+      SharedPreferencesAsync(),
+    );
+    await repository.save(
+      const AppSettings.defaults().copyWith(
+        developmentServerUrl: 'http://192.168.100.59:8000/api/v1/',
+        automaticServerConnection: false,
+      ),
+    );
+    expect((await repository.load()).automaticServerConnection, isFalse);
+    await repository.clearLocalPreferences();
+    expect((await repository.load()).automaticServerConnection, isFalse);
   });
 }

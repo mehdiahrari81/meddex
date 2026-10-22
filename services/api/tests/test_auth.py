@@ -124,3 +124,69 @@ def test_forgot_password_does_not_disclose_account_existence(client: TestClient)
     response = client.post("/api/v1/auth/password/forgot", json={"email": "missing@example.com"})
     assert response.status_code == 200
     assert "If an account exists" in response.json()["message"]
+
+
+def test_blank_name_is_rejected_and_email_whitespace_is_normalized(client: TestClient) -> None:
+    payload = {
+        "email": "  Valid@Example.com  ",
+        "password": "SecurePassword!123",
+        "display_name": "   ",
+    }
+    assert client.post("/api/v1/auth/register", json=payload).status_code == 422
+    payload["display_name"] = "  Valid Name  "
+    response = client.post("/api/v1/auth/register", json=payload)
+    assert response.status_code == 201
+    profile = client.get("/api/v1/users/me", headers=auth_headers(response.json()["access_token"]))
+    assert profile.json()["display_name"] == "Valid Name"
+    assert profile.json()["email"] == "valid@example.com"
+
+
+def test_mobile_refresh_rejects_admin_session(
+    client: TestClient, registered: dict[str, str]
+) -> None:
+    from uuid import UUID
+
+    from app.models import AuthSession
+
+    with client.app.state.session_factory() as db:
+        session = db.get(AuthSession, UUID(registered["session_id"]))
+        session.audience = "mediexplain-admin"
+        db.commit()
+    response = client.post(
+        "/api/v1/auth/refresh", json={"refresh_token": registered["refresh_token"]}
+    )
+    assert response.status_code == 401
+    assert (
+        client.get("/api/v1/users/me", headers=auth_headers(registered["access_token"])).status_code
+        == 401
+    )
+
+
+def test_random_authorization_headers_cannot_bypass_auth_rate_limit() -> None:
+    from fastapi import FastAPI
+
+    from app.core.middleware import (
+        AuthenticationRateLimitMiddleware,
+        InMemoryFixedWindowRateLimiter,
+    )
+
+    app = FastAPI()
+    app.add_middleware(
+        AuthenticationRateLimitMiddleware,
+        limiter=InMemoryFixedWindowRateLimiter(2),
+        api_prefix="/api/v1",
+    )
+
+    @app.post("/api/v1/auth/login")
+    def login() -> dict[str, bool]:
+        return {"ok": True}
+
+    with TestClient(app) as test:
+        statuses = [
+            test.post(
+                "/api/v1/auth/login",
+                headers={"Authorization": f"Bearer attacker-varies-this-{index}"},
+            ).status_code
+            for index in range(3)
+        ]
+    assert statuses == [200, 200, 429]

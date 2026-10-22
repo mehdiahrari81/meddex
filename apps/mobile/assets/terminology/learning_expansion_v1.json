@@ -1,0 +1,2229 @@
+{
+  "schema_version": 1,
+  "categories": [
+    {
+      "id": "cardiovascular",
+      "name": "Cardiovascular",
+      "description": "Terms involving the heart and blood vessels",
+      "position": 1
+    },
+    {
+      "id": "endocrine",
+      "name": "Endocrine",
+      "description": "Terms involving hormones and metabolism",
+      "position": 2
+    },
+    {
+      "id": "digestive",
+      "name": "Digestive",
+      "description": "Terms involving the digestive system",
+      "position": 3
+    },
+    {
+      "id": "urinary",
+      "name": "Urinary",
+      "description": "Terms involving the kidneys and urinary tract",
+      "position": 4
+    },
+    {
+      "id": "dermatology",
+      "name": "Dermatology",
+      "description": "Terms involving skin",
+      "position": 5
+    },
+    {
+      "id": "respiratory",
+      "name": "Respiratory",
+      "description": "Terms involving breathing and the lungs",
+      "position": 6
+    },
+    {
+      "id": "hematology",
+      "name": "Hematology",
+      "description": "Terms involving blood",
+      "position": 7
+    },
+    {
+      "id": "neurology",
+      "name": "Nervous system",
+      "description": "Terms involving the brain, spinal cord, and nerves",
+      "position": 8
+    },
+    {
+      "id": "general",
+      "name": "General medical terminology",
+      "description": "Cross-system medical language and abbreviations",
+      "position": 9
+    }
+  ],
+  "dataset_name": "mediexplain-learning-expansion",
+  "dataset_version": "2026.10.19.1",
+  "production_approved": false,
+  "generated_at": "2026-10-19T00:00:00Z",
+  "sources": [
+    {
+      "id": "src-learn-medicine-labels",
+      "provider": "FDA",
+      "source_title": "Reading a medicine label — educational source",
+      "source_identifier": "https://www.fda.gov/drugs/understanding-over-counter-medicines/over-counter-drug-facts-label",
+      "canonical_reference": "https://www.fda.gov/drugs/understanding-over-counter-medicines/over-counter-drug-facts-label",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-generic-medicines",
+      "provider": "FDA",
+      "source_title": "Brand and generic medicines — educational source",
+      "source_identifier": "https://www.fda.gov/drugs/generic-drugs/generic-drug-facts",
+      "canonical_reference": "https://www.fda.gov/drugs/generic-drugs/generic-drug-facts",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-medicine-benefits",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "Understanding what medicines do — educational source",
+      "source_identifier": "https://medlineplus.gov/medicines.html",
+      "canonical_reference": "https://medlineplus.gov/medicines.html",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-drug-reactions",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "Side effects and allergies — educational source",
+      "source_identifier": "https://medlineplus.gov/drugreactions.html",
+      "canonical_reference": "https://medlineplus.gov/drugreactions.html",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-antibiotics",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "What antibiotics can and cannot treat — educational source",
+      "source_identifier": "https://medlineplus.gov/antibiotics.html",
+      "canonical_reference": "https://medlineplus.gov/antibiotics.html",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-interactions",
+      "provider": "FDA",
+      "source_title": "Understanding medicine interactions — educational source",
+      "source_identifier": "https://www.fda.gov/drugs/resources-drugs/drug-interactions-what-you-should-know",
+      "canonical_reference": "https://www.fda.gov/drugs/resources-drugs/drug-interactions-what-you-should-know",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-medicine-routine",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "Keeping medicines organized — educational source",
+      "source_identifier": "https://medlineplus.gov/ency/patientinstructions/000600.htm",
+      "canonical_reference": "https://medlineplus.gov/ency/patientinstructions/000600.htm",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-medicine-storage",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "Storing medicines safely — educational source",
+      "source_identifier": "https://medlineplus.gov/ency/patientinstructions/000534.htm",
+      "canonical_reference": "https://medlineplus.gov/ency/patientinstructions/000534.htm",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-medicine-disposal",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "Disposing of unused medicines — educational source",
+      "source_identifier": "https://medlineplus.gov/ency/patientinstructions/000943.htm",
+      "canonical_reference": "https://medlineplus.gov/ency/patientinstructions/000943.htm",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-abbreviations",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "Making sense of medical abbreviations — educational source",
+      "source_identifier": "https://medlineplus.gov/appendixb.html",
+      "canonical_reference": "https://medlineplus.gov/appendixb.html",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-word-parts-practice",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "Using medical word parts carefully — educational source",
+      "source_identifier": "https://medlineplus.gov/appendixa.html",
+      "canonical_reference": "https://medlineplus.gov/appendixa.html",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-blood-pressure",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "Understanding blood pressure readings — educational source",
+      "source_identifier": "https://medlineplus.gov/highbloodpressure.html",
+      "canonical_reference": "https://medlineplus.gov/highbloodpressure.html",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-vital-signs",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "Pulse and other vital signs — educational source",
+      "source_identifier": "https://medlineplus.gov/ency/article/002341.htm",
+      "canonical_reference": "https://medlineplus.gov/ency/article/002341.htm",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-blood-glucose",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "Blood glucose in plain language — educational source",
+      "source_identifier": "https://medlineplus.gov/lab-tests/blood-glucose-test/",
+      "canonical_reference": "https://medlineplus.gov/lab-tests/blood-glucose-test/",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-a1c",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "Understanding an HbA1c result — educational source",
+      "source_identifier": "https://medlineplus.gov/lab-tests/hemoglobin-a1c-hba1c-test/",
+      "canonical_reference": "https://medlineplus.gov/lab-tests/hemoglobin-a1c-hba1c-test/",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-cholesterol",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "Understanding cholesterol terms — educational source",
+      "source_identifier": "https://medlineplus.gov/lab-tests/cholesterol-levels/",
+      "canonical_reference": "https://medlineplus.gov/lab-tests/cholesterol-levels/",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-blood-count",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "Understanding a complete blood count — educational source",
+      "source_identifier": "https://medlineplus.gov/lab-tests/complete-blood-count-cbc/",
+      "canonical_reference": "https://medlineplus.gov/lab-tests/complete-blood-count-cbc/",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-anemia",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "What anemia means — educational source",
+      "source_identifier": "https://medlineplus.gov/anemia.html",
+      "canonical_reference": "https://medlineplus.gov/anemia.html",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-kidney-tests",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "Understanding kidney tests — educational source",
+      "source_identifier": "https://medlineplus.gov/kidneytests.html",
+      "canonical_reference": "https://medlineplus.gov/kidneytests.html",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-liver-tests",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "Understanding liver blood tests — educational source",
+      "source_identifier": "https://medlineplus.gov/lab-tests/liver-function-tests/",
+      "canonical_reference": "https://medlineplus.gov/lab-tests/liver-function-tests/",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-urine-tests",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "Reading the idea behind a urine test — educational source",
+      "source_identifier": "https://medlineplus.gov/urinalysis.html",
+      "canonical_reference": "https://medlineplus.gov/urinalysis.html",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-asthma",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "Understanding asthma language — educational source",
+      "source_identifier": "https://medlineplus.gov/asthma.html",
+      "canonical_reference": "https://medlineplus.gov/asthma.html",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-dehydration",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "What dehydration means — educational source",
+      "source_identifier": "https://medlineplus.gov/dehydration.html",
+      "canonical_reference": "https://medlineplus.gov/dehydration.html",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-thyroid",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "Understanding thyroid terms — educational source",
+      "source_identifier": "https://medlineplus.gov/thyroiddiseases.html",
+      "canonical_reference": "https://medlineplus.gov/thyroiddiseases.html",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-imaging",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "Understanding common imaging tests — educational source",
+      "source_identifier": "https://medlineplus.gov/diagnosticimaging.html",
+      "canonical_reference": "https://medlineplus.gov/diagnosticimaging.html",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-lab-reports",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "Reference ranges and lab results — educational source",
+      "source_identifier": "https://medlineplus.gov/lab-tests/how-to-understand-your-lab-results/",
+      "canonical_reference": "https://medlineplus.gov/lab-tests/how-to-understand-your-lab-results/",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-appointments",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "Asking useful questions at appointments — educational source",
+      "source_identifier": "https://medlineplus.gov/talkingwithyourdoctor.html",
+      "canonical_reference": "https://medlineplus.gov/talkingwithyourdoctor.html",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    },
+    {
+      "id": "src-learn-medication-errors",
+      "provider": "National Library of Medicine / MedlinePlus",
+      "source_title": "Preventing medicine mix-ups — educational source",
+      "source_identifier": "https://medlineplus.gov/medicationerrors.html",
+      "canonical_reference": "https://medlineplus.gov/medicationerrors.html",
+      "retrieved_at": "2026-10-19T00:00:00Z",
+      "source_updated_at": null,
+      "locale": "en",
+      "version": "2026.10.19.1",
+      "review_status": "reviewed",
+      "content_type": "patient-education-summary",
+      "external_identifier": null,
+      "licensing_attribution": "Original MediExplain educational summary based on the linked public source. Source attribution is not endorsement. Not individually clinically reviewed; production publication requires editorial approval."
+    }
+  ],
+  "morphology": [],
+  "terms": [],
+  "abbreviations": [],
+  "lessons": [
+    {
+      "id": "lesson-medicine-labels",
+      "title": "Reading a medicine label",
+      "description": "The active ingredient is the substance that produces a medicine's effect.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain reading a medicine label in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-medicine-labels",
+      "sections": [
+        {
+          "id": "lesson-medicine-labels-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "The active ingredient is the substance that produces a medicine's effect. The Drug Facts panel on an over-the-counter product lists the ingredient and its amount.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-medicine-labels-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "The uses section describes what the product treats. Warnings explain situations that need extra care. Directions describe how to use that specific product.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-medicine-labels-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "Read the label each time. Check active ingredients before combining products so that you do not accidentally take the same ingredient twice.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-generic-medicines",
+      "title": "Brand and generic medicines",
+      "description": "A brand name is a product name.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain brand and generic medicines in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-generic-medicines",
+      "sections": [
+        {
+          "id": "lesson-generic-medicines-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "A brand name is a product name. A generic name identifies its active ingredient. One ingredient can be sold under several brand names.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-generic-medicines-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "FDA-approved generic medicines must match their brand counterparts in active ingredient, strength, dosage form, route, and expected clinical benefit.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-generic-medicines-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "Packaging, color, and some inactive ingredients can differ. Ask your pharmacist to explain a change in appearance or whether two products are equivalent.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-medicine-benefits",
+      "title": "Understanding what medicines do",
+      "description": "Medicines can prevent or treat illness and help control symptoms.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain understanding what medicines do in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-medicine-benefits",
+      "sections": [
+        {
+          "id": "lesson-medicine-benefits-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "Medicines can prevent or treat illness and help control symptoms. Some are used regularly; others are used for a short time or for a specific situation.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-medicine-benefits-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "Every medicine has possible benefits and risks. Other medicines, alcohol, foods, or pregnancy may affect whether a medicine is suitable for someone.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-medicine-benefits-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "Learn why each medicine was prescribed and how to use it. Your own instructions come from your prescriber and pharmacist, rather than a general educational summary.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-drug-reactions",
+      "title": "Side effects and allergies",
+      "description": "A side effect is an unwanted effect of a medicine.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain side effects and allergies in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-drug-reactions",
+      "sections": [
+        {
+          "id": "lesson-drug-reactions-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "A side effect is an unwanted effect of a medicine. An allergic reaction involves the immune system. These are different kinds of medicine reactions.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-drug-reactions-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "Not everyone gets the same reaction. Keep track of what happened, which product you took, and when symptoms started so your care team can assess it.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-drug-reactions-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "Tell your pharmacist or clinician about suspected reactions. Trouble breathing or swelling of the face or throat needs emergency medical attention.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-antibiotics",
+      "title": "What antibiotics can and cannot treat",
+      "description": "Antibiotics act against bacteria.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain what antibiotics can and cannot treat in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-antibiotics",
+      "sections": [
+        {
+          "id": "lesson-antibiotics-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "Antibiotics act against bacteria. They do not treat viruses such as those causing colds or flu. A clinician decides when an antibiotic is needed.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-antibiotics-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "Antibiotic resistance occurs when bacteria change so a medicine no longer works well against them. Unnecessary antibiotic use contributes to this problem.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-antibiotics-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "Follow the prescribed instructions and discuss side effects with your clinician. Do not share antibiotics, use someone else's prescription, or keep leftovers for a future illness.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-interactions",
+      "title": "Understanding medicine interactions",
+      "description": "An interaction happens when another substance or health condition changes a medicine's effects.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain understanding medicine interactions in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-interactions",
+      "sections": [
+        {
+          "id": "lesson-interactions-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "An interaction happens when another substance or health condition changes a medicine's effects. It may increase unwanted effects or reduce the intended benefit.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-interactions-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "Prescription medicines can interact with nonprescription products, supplements, foods, or alcohol. A product sold without a prescription can still cause an interaction.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-interactions-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "Give your pharmacist a complete list of what you take. Read warnings and ask before adding a new product rather than trying to judge combinations yourself.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-medicine-routine",
+      "title": "Keeping medicines organized",
+      "description": "A medicine list records product names, amounts, and the times you use them.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain keeping medicines organized in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-medicine-routine",
+      "sections": [
+        {
+          "id": "lesson-medicine-routine-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "A medicine list records product names, amounts, and the times you use them. Keeping one current list helps you and your care team understand your routine.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-medicine-routine-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "A written schedule, appropriate organizer, or reminder can help you remember a planned dose. Ask a pharmacist whether your medicines are suitable for an organizer.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-medicine-routine-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "Record a dose only after taking it. If you miss one, check the medicine's instructions or ask your pharmacist instead of guessing how to catch up.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-medicine-storage",
+      "title": "Storing medicines safely",
+      "description": "Heat, light, air, and moisture can damage medicines.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain storing medicines safely in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-medicine-storage",
+      "sections": [
+        {
+          "id": "lesson-medicine-storage-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "Heat, light, air, and moisture can damage medicines. A bathroom may be too damp or warm even if it has a medicine cabinet.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-medicine-storage-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "Read storage instructions for each product. Some medicines require special temperatures. Keep products in their original containers unless a pharmacist advises otherwise.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-medicine-storage-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "Keep medicines away from children and pets. Check expiry dates and ask a pharmacist about products that look or smell different or were stored incorrectly.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-medicine-disposal",
+      "title": "Disposing of unused medicines",
+      "description": "Unwanted or expired medicines can be taken by accident or misused.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain disposing of unused medicines in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-medicine-disposal",
+      "sections": [
+        {
+          "id": "lesson-medicine-disposal-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "Unwanted or expired medicines can be taken by accident or misused. Safe disposal matters when a treatment ends or a prescription changes.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-medicine-disposal-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "A medicine take-back service is usually the preferred disposal option. Your pharmacist or local waste service can help you find an appropriate collection program.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-medicine-disposal-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "Do not routinely flush medicines. Only specific products have instructions allowing this. Follow current product and local disposal instructions, and remove personal information from discarded packaging.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-abbreviations",
+      "title": "Making sense of medical abbreviations",
+      "description": "Abbreviations shorten longer phrases.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain making sense of medical abbreviations in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-abbreviations",
+      "sections": [
+        {
+          "id": "lesson-abbreviations-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "Abbreviations shorten longer phrases. BP commonly means blood pressure, and HR commonly means heart rate. The surrounding sentence helps establish the intended meaning.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-abbreviations-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "PO refers to taking something by mouth; IV refers to a vein. These describe different routes and should not be substituted for one another.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-abbreviations-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "BID means twice daily and PRN means as needed. An abbreviation alone is not a complete personal instruction. Ask a pharmacist to clarify timing, amounts, and any unclear handwriting.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-word-parts-practice",
+      "title": "Using medical word parts carefully",
+      "description": "Many medical words contain smaller parts.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain using medical word parts carefully in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-word-parts-practice",
+      "sections": [
+        {
+          "id": "lesson-word-parts-practice-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "Many medical words contain smaller parts. For example, hyper- suggests an excessive amount, hypo- suggests a reduced amount, and -itis describes inflammation.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-word-parts-practice-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "Some roots point to body structures: gastr- relates to the stomach, nephr- to the kidney, and derm- to skin. A root can help orient you to a topic.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-word-parts-practice-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "Word parts provide clues rather than a complete diagnosis. Read the full definition and context. Similar-looking words do not always describe the same condition.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-blood-pressure",
+      "title": "Understanding blood pressure readings",
+      "description": "Blood pressure describes the force of blood against artery walls.",
+      "category_id": "cardiovascular",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain understanding blood pressure readings in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-blood-pressure",
+      "sections": [
+        {
+          "id": "lesson-blood-pressure-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "Blood pressure describes the force of blood against artery walls. A reading has two numbers and is usually reported in millimeters of mercury, written mmHg.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-blood-pressure-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "Systolic is the upper number, measured when the heart beats. Diastolic is the lower number, measured while the heart relaxes between beats.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-blood-pressure-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "A single number is only part of the picture. Measurement technique and repeated readings matter. Ask your clinician what your readings mean and what target applies to you.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-vital-signs",
+      "title": "Pulse and other vital signs",
+      "description": "Vital signs are basic measurements of body function.",
+      "category_id": "cardiovascular",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain pulse and other vital signs in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-vital-signs",
+      "sections": [
+        {
+          "id": "lesson-vital-signs-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "Vital signs are basic measurements of body function. Common examples include temperature, pulse, breathing rate, and blood pressure.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-vital-signs-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "Pulse describes the number of heartbeats per minute. Breathing rate describes breaths per minute. These measure different body activities even though both are rates.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-vital-signs-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "Typical readings vary with age, activity, and health. A reading taken after exercise can differ from one taken at rest. Share the number and its context with your clinician.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-blood-glucose",
+      "title": "Blood glucose in plain language",
+      "description": "Glucose is a sugar that provides energy.",
+      "category_id": "endocrine",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain blood glucose in plain language in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-blood-glucose",
+      "sections": [
+        {
+          "id": "lesson-blood-glucose-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "Glucose is a sugar that provides energy. A blood glucose test measures how much of it is in a blood sample at that time.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-blood-glucose-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "Food and test preparation can affect the result. Some glucose tests require fasting, while others are taken at a different time or after a specific drink.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-blood-glucose-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "Check the units and the reference information on your own report. Follow preparation instructions and ask your clinician to interpret the result with your symptoms and medical history.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-a1c",
+      "title": "Understanding an HbA1c result",
+      "description": "Hemoglobin is a protein in red blood cells.",
+      "category_id": "endocrine",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain understanding an HbA1c result in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-a1c",
+      "sections": [
+        {
+          "id": "lesson-a1c-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "Hemoglobin is a protein in red blood cells. HbA1c measures the proportion of hemoglobin with glucose attached to it.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-a1c-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "An HbA1c result reflects average blood glucose over roughly the previous three months. It gives a longer view than a single glucose measurement.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-a1c-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "Clinicians use HbA1c to help diagnose or monitor diabetes. Some health conditions can affect its accuracy. Discuss your result and personal goals with your care team.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-cholesterol",
+      "title": "Understanding cholesterol terms",
+      "description": "Cholesterol is a waxy substance used by the body.",
+      "category_id": "cardiovascular",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain understanding cholesterol terms in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-cholesterol",
+      "sections": [
+        {
+          "id": "lesson-cholesterol-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "Cholesterol is a waxy substance used by the body. A lipid panel measures cholesterol-related values and usually triglycerides, another type of fat in blood.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-cholesterol-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "LDL carries cholesterol toward tissues; excess LDL can contribute to artery buildup. HDL helps carry cholesterol back to the liver. The overall pattern matters.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-cholesterol-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "Cholesterol results help assess cardiovascular risk alongside age, health history, and other factors. Ask your clinician to explain your report rather than judging one number alone.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-blood-count",
+      "title": "Understanding a complete blood count",
+      "description": "A complete blood count, or CBC, measures several features of blood.",
+      "category_id": "hematology",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain understanding a complete blood count in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-blood-count",
+      "sections": [
+        {
+          "id": "lesson-blood-count-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "A complete blood count, or CBC, measures several features of blood. It includes information about red cells, white cells, and platelets.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-blood-count-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "Red cells carry oxygen, white cells participate in immune defense, and platelets help blood clot. Hemoglobin is an oxygen-carrying protein in red cells.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-blood-count-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "An unusual CBC result can have many causes. A clinician interprets it alongside symptoms and may request more tests. A flagged number alone does not identify a disease.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-anemia",
+      "title": "What anemia means",
+      "description": "Anemia means blood has fewer healthy red blood cells or less hemoglobin than needed to carry oxygen effectively.",
+      "category_id": "hematology",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain what anemia means in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-anemia",
+      "sections": [
+        {
+          "id": "lesson-anemia-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "Anemia means blood has fewer healthy red blood cells or less hemoglobin than needed to carry oxygen effectively. It can have several different causes.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-anemia-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "Tiredness, weakness, or shortness of breath can occur with anemia, but these symptoms can also have other explanations. Blood tests help clinicians investigate.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-anemia-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "Low iron is one possible cause, not the explanation for every anemia. Treatment depends on the cause, so do not choose supplements based only on the word anemia.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-kidney-tests",
+      "title": "Understanding kidney tests",
+      "description": "Kidneys filter waste and extra fluid from blood.",
+      "category_id": "urinary",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain understanding kidney tests in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-kidney-tests",
+      "sections": [
+        {
+          "id": "lesson-kidney-tests-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "Kidneys filter waste and extra fluid from blood. Blood and urine tests can help assess how well they are doing this work.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-kidney-tests-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "Creatinine is a waste product measured in blood. An estimated glomerular filtration rate, or eGFR, estimates filtering ability. Urine protein tests provide another kind of information.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-kidney-tests-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "Kidney results are interpreted together and over time. A clinician considers age, other health conditions, and medicines. One test cannot explain every aspect of kidney health.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-liver-tests",
+      "title": "Understanding liver blood tests",
+      "description": "A liver panel measures substances related to liver health, including certain enzymes and proteins.",
+      "category_id": "digestive",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain understanding liver blood tests in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-liver-tests",
+      "sections": [
+        {
+          "id": "lesson-liver-tests-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "A liver panel measures substances related to liver health, including certain enzymes and proteins. Different measurements provide different clues.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-liver-tests-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "ALT and AST are enzymes that may rise when cells are injured. Albumin is a protein made by the liver. These results are not interchangeable.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-liver-tests-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "An abnormal result does not by itself establish a cause or measure all liver function. Medicines and other conditions can influence results. Your clinician may compare tests or request follow-up.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-urine-tests",
+      "title": "Reading the idea behind a urine test",
+      "description": "Urinalysis examines a urine sample.",
+      "category_id": "urinary",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain reading the idea behind a urine test in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-urine-tests",
+      "sections": [
+        {
+          "id": "lesson-urine-tests-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "Urinalysis examines a urine sample. It may assess appearance, chemical measurements, and material seen under a microscope.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-urine-tests-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "The test can look for clues such as protein, glucose, blood, or signs of infection. These findings can help guide further investigation.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-urine-tests-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "Collection instructions matter because contamination can affect results. A finding does not always identify a specific disease. Ask your clinician whether a repeat test or another test is needed.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-asthma",
+      "title": "Understanding asthma language",
+      "description": "Asthma is a long-term condition involving the airways.",
+      "category_id": "respiratory",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain understanding asthma language in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-asthma",
+      "sections": [
+        {
+          "id": "lesson-asthma-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "Asthma is a long-term condition involving the airways. Inflammation and narrowing can make moving air in and out of the lungs harder.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-asthma-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "Wheezing, coughing, chest tightness, and shortness of breath can occur. Triggers differ between people, and symptoms can change over time.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-asthma-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "An asthma action plan explains a person's medicines and what to do as symptoms change. Follow your own plan and seek urgent help for severe breathing difficulty.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-dehydration",
+      "title": "What dehydration means",
+      "description": "Dehydration occurs when the body loses more fluid than it takes in.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain what dehydration means in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-dehydration",
+      "sections": [
+        {
+          "id": "lesson-dehydration-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "Dehydration occurs when the body loses more fluid than it takes in. Illness, heat, or activity can contribute to fluid loss.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-dehydration-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "Thirst, dry mouth, and less frequent urination can be clues. Babies, older adults, and people with certain illnesses may be especially vulnerable.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-dehydration-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "Severe dehydration can be dangerous. Seek medical advice for concerning symptoms or inability to keep fluids down. People with fluid restrictions should follow their clinician's individual instructions.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-thyroid",
+      "title": "Understanding thyroid terms",
+      "description": "The thyroid is a gland in the neck that makes hormones.",
+      "category_id": "endocrine",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain understanding thyroid terms in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-thyroid",
+      "sections": [
+        {
+          "id": "lesson-thyroid-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "The thyroid is a gland in the neck that makes hormones. These hormones influence many body processes, including how the body uses energy.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-thyroid-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "Hypothyroidism means the thyroid is not producing enough hormone. Hyperthyroidism means it produces too much. The words describe opposite hormone problems.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-thyroid-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "Symptoms can overlap with other illnesses. Blood tests and clinical assessment help establish what is happening. Do not change a thyroid medicine based only on symptoms or a word definition.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-imaging",
+      "title": "Understanding common imaging tests",
+      "description": "Diagnostic imaging creates pictures of structures inside the body.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain understanding common imaging tests in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-imaging",
+      "sections": [
+        {
+          "id": "lesson-imaging-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "Diagnostic imaging creates pictures of structures inside the body. Clinicians choose a test based on the question they need to answer.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-imaging-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "X-rays and CT scans use ionizing radiation. Ultrasound uses sound waves. MRI uses magnetic fields and radio waves. The methods have different strengths and precautions.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-imaging-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "Tell the imaging team about pregnancy, implants, allergies, or preparation concerns. Ask what the test is intended to show and when to expect a clinician's explanation of the report.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-lab-reports",
+      "title": "Reference ranges and lab results",
+      "description": "A reference range describes results commonly seen in a defined healthy group.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain reference ranges and lab results in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-lab-reports",
+      "sections": [
+        {
+          "id": "lesson-lab-reports-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "A reference range describes results commonly seen in a defined healthy group. The range printed on your own lab report is the relevant comparison.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-lab-reports-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "Different laboratories can use different methods, units, and ranges. A flagged value does not automatically mean disease, and an in-range value does not guarantee good health.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-lab-reports-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "Positive means the test detected what it was looking for; negative means it did not. Uncertain results may need repeat testing. Your clinician interprets results in context.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-appointments",
+      "title": "Asking useful questions at appointments",
+      "description": "Preparing a short list of questions helps you use appointment time well.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain asking useful questions at appointments in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-appointments",
+      "sections": [
+        {
+          "id": "lesson-appointments-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "Preparing a short list of questions helps you use appointment time well. Bring your current medicines and describe the symptoms or concerns that matter most to you.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-appointments-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "Ask what a diagnosis means in everyday words, what each medicine is for, and what follow-up is needed. Tell your clinician when an explanation is difficult to understand.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-appointments-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "Repeat the plan back in your own words to check understanding. Ask for written instructions and whom to contact if a question comes up after the visit.",
+          "linked_term_ids": []
+        }
+      ]
+    },
+    {
+      "id": "lesson-medication-errors",
+      "title": "Preventing medicine mix-ups",
+      "description": "A medication error is a preventable mistake in prescribing, supplying, or using a medicine.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "estimated_minutes": 3,
+      "objectives": [
+        "Explain preventing medicine mix-ups in everyday language",
+        "Recognize when to ask your care team for clarification"
+      ],
+      "review_question_ids": [],
+      "review_status": "reviewed",
+      "version": 1,
+      "source_id": "src-learn-medication-errors",
+      "sections": [
+        {
+          "id": "lesson-medication-errors-1",
+          "title": "The basic idea",
+          "type": "text",
+          "position": 0,
+          "content": "A medication error is a preventable mistake in prescribing, supplying, or using a medicine. Errors can involve the wrong product, amount, route, or timing.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-medication-errors-2",
+          "title": "What the words mean",
+          "type": "text",
+          "position": 1,
+          "content": "Keep a current medicine list and check labels. Share allergies and all prescription, nonprescription, and supplement products with each member of your care team.",
+          "linked_term_ids": []
+        },
+        {
+          "id": "lesson-medication-errors-3",
+          "title": "Using this information",
+          "type": "text",
+          "position": 2,
+          "content": "If instructions conflict or a product seems unexpected, ask the pharmacist before using it. A reminder app helps keep records, but it cannot resolve an unclear prescription by itself.",
+          "linked_term_ids": []
+        }
+      ]
+    }
+  ],
+  "flashcards": [
+    {
+      "id": "card-learn-medicine-labels-1",
+      "type": "termToMeaning",
+      "front": "What is an active ingredient?",
+      "back": "The substance in a medicine that produces its effect.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-medicine-labels"
+    },
+    {
+      "id": "card-learn-medicine-labels-2",
+      "type": "termToMeaning",
+      "front": "Where do you find OTC instructions?",
+      "back": "In the directions section of the Drug Facts label.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-medicine-labels"
+    },
+    {
+      "id": "card-learn-generic-medicines-1",
+      "type": "termToMeaning",
+      "front": "What does a generic name identify?",
+      "back": "The active ingredient rather than a company's product name.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-generic-medicines"
+    },
+    {
+      "id": "card-learn-generic-medicines-2",
+      "type": "termToMeaning",
+      "front": "Can a generic tablet look different?",
+      "back": "Yes. Appearance and some inactive ingredients may differ.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-generic-medicines"
+    },
+    {
+      "id": "card-learn-medicine-benefits-1",
+      "type": "termToMeaning",
+      "front": "Why learn the purpose of each medicine?",
+      "back": "To understand its intended benefit and discuss questions with your care team.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-medicine-benefits"
+    },
+    {
+      "id": "card-learn-medicine-benefits-2",
+      "type": "termToMeaning",
+      "front": "Does a medicine being available mean it has no risks?",
+      "back": "No. Medicines can have unwanted effects or interactions.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-medicine-benefits"
+    },
+    {
+      "id": "card-learn-drug-reactions-1",
+      "type": "termToMeaning",
+      "front": "Is every side effect an allergy?",
+      "back": "No. An allergy is an immune reaction; many side effects are not.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-drug-reactions"
+    },
+    {
+      "id": "card-learn-drug-reactions-2",
+      "type": "termToMeaning",
+      "front": "What should you record about a suspected reaction?",
+      "back": "The medicine, symptoms, and when they occurred.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-drug-reactions"
+    },
+    {
+      "id": "card-learn-antibiotics-1",
+      "type": "termToMeaning",
+      "front": "Do antibiotics treat colds caused by viruses?",
+      "back": "No. Antibiotics act against bacteria, not viruses.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-antibiotics"
+    },
+    {
+      "id": "card-learn-antibiotics-2",
+      "type": "termToMeaning",
+      "front": "What is antibiotic resistance?",
+      "back": "Bacteria becoming able to survive an antibiotic's effects.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-antibiotics"
+    },
+    {
+      "id": "card-learn-interactions-1",
+      "type": "termToMeaning",
+      "front": "What is a medicine interaction?",
+      "back": "Something changing how a medicine works or its unwanted effects.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-interactions"
+    },
+    {
+      "id": "card-learn-interactions-2",
+      "type": "termToMeaning",
+      "front": "Should supplements be on your medicine list?",
+      "back": "Yes. Supplements can interact with medicines too.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-interactions"
+    },
+    {
+      "id": "card-learn-medicine-routine-1",
+      "type": "termToMeaning",
+      "front": "What should a medicine list include?",
+      "back": "Medicine names, how much you take, and when you take them.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-medicine-routine"
+    },
+    {
+      "id": "card-learn-medicine-routine-2",
+      "type": "termToMeaning",
+      "front": "When should you mark a dose as taken?",
+      "back": "After actually taking it, so the record matches what happened.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-medicine-routine"
+    },
+    {
+      "id": "card-learn-medicine-storage-1",
+      "type": "termToMeaning",
+      "front": "Why can a bathroom be a poor storage place?",
+      "back": "Heat and moisture may damage medicines.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-medicine-storage"
+    },
+    {
+      "id": "card-learn-medicine-storage-2",
+      "type": "termToMeaning",
+      "front": "Where do special storage requirements appear?",
+      "back": "On the product instructions; ask a pharmacist if unclear.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-medicine-storage"
+    },
+    {
+      "id": "card-learn-medicine-disposal-1",
+      "type": "termToMeaning",
+      "front": "What is a preferred way to dispose of unused medicine?",
+      "back": "An appropriate medicine take-back program.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-medicine-disposal"
+    },
+    {
+      "id": "card-learn-medicine-disposal-2",
+      "type": "termToMeaning",
+      "front": "Should every unwanted medicine be flushed?",
+      "back": "No. Flushing is only appropriate for specific instructed products.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-medicine-disposal"
+    },
+    {
+      "id": "card-learn-abbreviations-1",
+      "type": "termToMeaning",
+      "front": "What does BID commonly mean?",
+      "back": "Twice daily; confirm your own schedule with the pharmacist.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-abbreviations"
+    },
+    {
+      "id": "card-learn-abbreviations-2",
+      "type": "termToMeaning",
+      "front": "What does PRN commonly mean?",
+      "back": "As needed; the prescription must also specify how to use it safely.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-abbreviations"
+    },
+    {
+      "id": "card-learn-word-parts-practice-1",
+      "type": "termToMeaning",
+      "front": "What does the suffix -itis describe?",
+      "back": "Inflammation.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-word-parts-practice"
+    },
+    {
+      "id": "card-learn-word-parts-practice-2",
+      "type": "termToMeaning",
+      "front": "What body structure does nephr- refer to?",
+      "back": "The kidney.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-word-parts-practice"
+    },
+    {
+      "id": "card-learn-blood-pressure-1",
+      "type": "termToMeaning",
+      "front": "What is systolic pressure?",
+      "back": "The pressure when the heart beats; usually the upper number.",
+      "category_id": "cardiovascular",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-blood-pressure"
+    },
+    {
+      "id": "card-learn-blood-pressure-2",
+      "type": "termToMeaning",
+      "front": "What is diastolic pressure?",
+      "back": "The pressure between heartbeats; usually the lower number.",
+      "category_id": "cardiovascular",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-blood-pressure"
+    },
+    {
+      "id": "card-learn-vital-signs-1",
+      "type": "termToMeaning",
+      "front": "What does pulse measure?",
+      "back": "Heartbeats per minute.",
+      "category_id": "cardiovascular",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-vital-signs"
+    },
+    {
+      "id": "card-learn-vital-signs-2",
+      "type": "termToMeaning",
+      "front": "Name two vital signs besides pulse.",
+      "back": "Examples include temperature, breathing rate, and blood pressure.",
+      "category_id": "cardiovascular",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-vital-signs"
+    },
+    {
+      "id": "card-learn-blood-glucose-1",
+      "type": "termToMeaning",
+      "front": "What does a blood glucose test measure?",
+      "back": "The amount of glucose, a sugar, in the blood.",
+      "category_id": "endocrine",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-blood-glucose"
+    },
+    {
+      "id": "card-learn-blood-glucose-2",
+      "type": "termToMeaning",
+      "front": "Do all blood glucose tests require fasting?",
+      "back": "No. Preparation depends on the specific test ordered.",
+      "category_id": "endocrine",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-blood-glucose"
+    },
+    {
+      "id": "card-learn-a1c-1",
+      "type": "termToMeaning",
+      "front": "What time period does HbA1c roughly reflect?",
+      "back": "Average blood glucose over the previous three months.",
+      "category_id": "endocrine",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-a1c"
+    },
+    {
+      "id": "card-learn-a1c-2",
+      "type": "termToMeaning",
+      "front": "Is HbA1c the same as a single glucose reading?",
+      "back": "No. It reflects a longer-term average rather than one moment.",
+      "category_id": "endocrine",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-a1c"
+    },
+    {
+      "id": "card-learn-cholesterol-1",
+      "type": "termToMeaning",
+      "front": "What is a lipid panel?",
+      "back": "A blood test reporting cholesterol measures and usually triglycerides.",
+      "category_id": "cardiovascular",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-cholesterol"
+    },
+    {
+      "id": "card-learn-cholesterol-2",
+      "type": "termToMeaning",
+      "front": "Can one cholesterol number describe all heart risk?",
+      "back": "No. Clinicians consider the full results and other risk factors.",
+      "category_id": "cardiovascular",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-cholesterol"
+    },
+    {
+      "id": "card-learn-blood-count-1",
+      "type": "termToMeaning",
+      "front": "What does CBC stand for?",
+      "back": "Complete blood count.",
+      "category_id": "hematology",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-blood-count"
+    },
+    {
+      "id": "card-learn-blood-count-2",
+      "type": "termToMeaning",
+      "front": "What do platelets help with?",
+      "back": "Blood clotting.",
+      "category_id": "hematology",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-blood-count"
+    },
+    {
+      "id": "card-learn-anemia-1",
+      "type": "termToMeaning",
+      "front": "Is all anemia caused by low iron?",
+      "back": "No. There are several causes, and treatment depends on the cause.",
+      "category_id": "hematology",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-anemia"
+    },
+    {
+      "id": "card-learn-anemia-2",
+      "type": "termToMeaning",
+      "front": "Why can anemia cause tiredness?",
+      "back": "The blood may carry less oxygen to the body's tissues.",
+      "category_id": "hematology",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-anemia"
+    },
+    {
+      "id": "card-learn-kidney-tests-1",
+      "type": "termToMeaning",
+      "front": "What does eGFR estimate?",
+      "back": "How well the kidneys filter blood.",
+      "category_id": "urinary",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-kidney-tests"
+    },
+    {
+      "id": "card-learn-kidney-tests-2",
+      "type": "termToMeaning",
+      "front": "Why might both blood and urine be tested?",
+      "back": "They provide different information about kidney function and possible damage.",
+      "category_id": "urinary",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-kidney-tests"
+    },
+    {
+      "id": "card-learn-liver-tests-1",
+      "type": "termToMeaning",
+      "front": "What is a liver panel?",
+      "back": "A group of blood tests that provide clues about liver health.",
+      "category_id": "digestive",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-liver-tests"
+    },
+    {
+      "id": "card-learn-liver-tests-2",
+      "type": "termToMeaning",
+      "front": "Does one abnormal liver enzyme identify the cause?",
+      "back": "No. Results need interpretation with other tests and medical history.",
+      "category_id": "digestive",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-liver-tests"
+    },
+    {
+      "id": "card-learn-urine-tests-1",
+      "type": "termToMeaning",
+      "front": "What is urinalysis?",
+      "back": "An examination of urine that can include physical, chemical, and microscopic checks.",
+      "category_id": "urinary",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-urine-tests"
+    },
+    {
+      "id": "card-learn-urine-tests-2",
+      "type": "termToMeaning",
+      "front": "Why follow urine collection instructions?",
+      "back": "To reduce contamination and help make the result useful.",
+      "category_id": "urinary",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-urine-tests"
+    },
+    {
+      "id": "card-learn-asthma-1",
+      "type": "termToMeaning",
+      "front": "What part of the body is affected by asthma?",
+      "back": "The airways in the lungs.",
+      "category_id": "respiratory",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-asthma"
+    },
+    {
+      "id": "card-learn-asthma-2",
+      "type": "termToMeaning",
+      "front": "What is an asthma action plan?",
+      "back": "Personal instructions for medicines and what to do when symptoms change.",
+      "category_id": "respiratory",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-asthma"
+    },
+    {
+      "id": "card-learn-dehydration-1",
+      "type": "termToMeaning",
+      "front": "What does dehydration mean?",
+      "back": "The body has lost more fluid than it has taken in.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-dehydration"
+    },
+    {
+      "id": "card-learn-dehydration-2",
+      "type": "termToMeaning",
+      "front": "Can fluid needs be identical for everyone?",
+      "back": "No. Age, illness, and clinician-directed restrictions can change individual needs.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-dehydration"
+    },
+    {
+      "id": "card-learn-thyroid-1",
+      "type": "termToMeaning",
+      "front": "What is hypothyroidism?",
+      "back": "Too little thyroid hormone production.",
+      "category_id": "endocrine",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-thyroid"
+    },
+    {
+      "id": "card-learn-thyroid-2",
+      "type": "termToMeaning",
+      "front": "What is hyperthyroidism?",
+      "back": "Too much thyroid hormone production.",
+      "category_id": "endocrine",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-thyroid"
+    },
+    {
+      "id": "card-learn-imaging-1",
+      "type": "termToMeaning",
+      "front": "Does ultrasound use x-rays?",
+      "back": "No. Ultrasound uses sound waves.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-imaging"
+    },
+    {
+      "id": "card-learn-imaging-2",
+      "type": "termToMeaning",
+      "front": "Do CT and MRI use the same method?",
+      "back": "No. CT uses x-rays; MRI uses magnetic fields and radio waves.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-imaging"
+    },
+    {
+      "id": "card-learn-lab-reports-1",
+      "type": "termToMeaning",
+      "front": "Does an out-of-range result always mean disease?",
+      "back": "No. Your clinician must consider symptoms, history, and the test context.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-lab-reports"
+    },
+    {
+      "id": "card-learn-lab-reports-2",
+      "type": "termToMeaning",
+      "front": "Why use the range on your own report?",
+      "back": "Laboratories can use different methods, units, and reference ranges.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-lab-reports"
+    },
+    {
+      "id": "card-learn-appointments-1",
+      "type": "termToMeaning",
+      "front": "What can help you prepare for an appointment?",
+      "back": "A current medicine list and a short list of questions or concerns.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-appointments"
+    },
+    {
+      "id": "card-learn-appointments-2",
+      "type": "termToMeaning",
+      "front": "Why repeat a care plan back in your own words?",
+      "back": "To check that you and the clinician understand the same next steps.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-appointments"
+    },
+    {
+      "id": "card-learn-medication-errors-1",
+      "type": "termToMeaning",
+      "front": "What is a medication error?",
+      "back": "A preventable mistake in prescribing, supplying, or using a medicine.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-medication-errors"
+    },
+    {
+      "id": "card-learn-medication-errors-2",
+      "type": "termToMeaning",
+      "front": "What should you do with conflicting medicine instructions?",
+      "back": "Ask the pharmacist or prescriber to clarify before using the medicine.",
+      "category_id": "general",
+      "difficulty": "beginner",
+      "linked_content_id": null,
+      "source_id": "src-learn-medication-errors"
+    }
+  ],
+  "quiz_questions": []
+}

@@ -17,11 +17,51 @@ import '../l10n/app_localizations.dart';
 import 'bootstrap/bootstrap_provider.dart';
 import 'router/app_router.dart';
 
-class MediExplainApp extends ConsumerWidget {
+class MediExplainApp extends ConsumerStatefulWidget {
   const MediExplainApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MediExplainApp> createState() => _MediExplainAppState();
+}
+
+class _MediExplainAppState extends ConsumerState<MediExplainApp>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed &&
+        ref.read(bootstrapProvider).hasValue) {
+      ref.invalidate(referenceContentRefreshProvider);
+      ref.read(referenceContentRefreshProvider.future);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen(
+      settingsControllerProvider.select(
+        (value) => value.valueOrNull?.notificationsEnabled,
+      ),
+      (previous, next) {
+        if (previous != null &&
+            next != null &&
+            previous != next &&
+            ref.read(bootstrapProvider).hasValue) {
+          ref.read(accountReminderCoordinatorProvider).refresh();
+        }
+      },
+    );
     ref.listen(authControllerProvider, (previous, next) {
       if (!ref.read(bootstrapProvider).hasValue || !next.hasValue) return;
       if (previous?.valueOrNull?.session?.userId !=

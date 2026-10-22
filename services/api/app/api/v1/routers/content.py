@@ -31,6 +31,20 @@ def published_dataset(db: DatabaseDependency, settings: SettingsDependency) -> d
 
 @router.get("/content/version", response_model=ContentVersionRead)
 def content_version(db: DatabaseDependency) -> ContentVersionRead:
+    # The compiled mobile release is authoritative, even if an uploaded file
+    # carries an arbitrary generated_at timestamp.
+    release = db.get(GovernedContent, "reference.mobile")
+    if release is not None and release.published_revision is not None:
+        revision = db.scalar(
+            select(GovernedContentRevision).where(
+                GovernedContentRevision.stable_id == release.stable_id,
+                GovernedContentRevision.revision == release.published_revision,
+            )
+        )
+        if revision is not None:
+            current = db.get(ContentVersion, str(revision.content["dataset_name"]))
+            if current is not None:
+                return ContentVersionRead.model_validate(current)
     value = db.scalar(select(ContentVersion).order_by(ContentVersion.updated_at.desc()))
     if value is None:
         from fastapi import HTTPException

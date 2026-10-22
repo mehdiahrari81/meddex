@@ -69,6 +69,11 @@ abstract interface class PlatformNotificationAdapter {
   Future<List<PendingNotificationRequest>> pending();
 }
 
+/// Optional platform capability for removing delivered as well as pending reminders.
+abstract interface class ActiveNotificationReader {
+  Future<List<ActiveNotification>> active();
+}
+
 abstract interface class NotificationScheduler {
   Future<void> schedule(ReminderNotification reminder);
   Future<void> cancel(int id);
@@ -181,14 +186,17 @@ class DeviceNotificationPermissionService
       true;
 }
 
-class FlutterLocalNotificationAdapter implements PlatformNotificationAdapter {
+class FlutterLocalNotificationAdapter
+    implements PlatformNotificationAdapter, ActiveNotificationReader {
   FlutterLocalNotificationAdapter(this._plugin);
 
   final FlutterLocalNotificationsPlugin _plugin;
   bool _initialized = false;
+  MedicationNotificationResponseHandler? _handler;
 
   @override
   Future<void> initialize(MedicationNotificationResponseHandler handler) async {
+    _handler = handler;
     if (_initialized) return;
     tz_data.initializeTimeZones();
     try {
@@ -236,7 +244,7 @@ class FlutterLocalNotificationAdapter implements PlatformNotificationAdapter {
       settings: settings,
       onDidReceiveNotificationResponse: (response) async {
         final parsed = _parse(response.actionId, response.payload);
-        if (parsed != null) await handler(parsed);
+        if (parsed != null) await _handler?.call(parsed);
       },
     );
     _initialized = true;
@@ -348,6 +356,9 @@ class FlutterLocalNotificationAdapter implements PlatformNotificationAdapter {
 
   @override
   Future<void> cancelAll() => _plugin.cancelAll();
+
+  @override
+  Future<List<ActiveNotification>> active() => _plugin.getActiveNotifications();
 
   @override
   Future<List<PendingNotificationRequest>> pending() =>

@@ -4,6 +4,12 @@ abstract interface class MedicationRepository {
   Stream<List<MedicationPlanDetails>> watchPlans({MedicationStatus? status});
   Future<MedicationPlanDetails?> getPlan(String planId);
   Future<MedicationPlanDetails> createPlan(CreateMedicationPlanRequest request);
+  Future<List<MedicationPlanDetails>> saveConfirmedPrescription(
+    String prescriptionId,
+  );
+
+  /// [activate] enables the saved schedule atomically when the user sets a
+  /// reminder. Ordinary schedule edits preserve an existing pause.
   Future<void> replaceSchedule(
     String planId, {
     required MedicationScheduleType type,
@@ -12,6 +18,8 @@ abstract interface class MedicationRepository {
     int? intervalHours,
     DateTime? intervalAnchor,
     bool asNeeded,
+    String? timezone,
+    bool activate = false,
   });
   Future<void> setPlanActive(String planId, bool active);
   Future<void> setMedicationStatus(
@@ -19,6 +27,8 @@ abstract interface class MedicationRepository {
     MedicationStatus status,
   );
   Future<void> deletePlan(String planId, {required bool deleteLogs});
+  Future<List<String>> medicationPlanIds(String medicationId);
+  Future<void> deleteMedication(String medicationId);
   Future<DoseEvent> recordDose({
     required String planId,
     required String logicalDoseId,
@@ -32,6 +42,7 @@ abstract interface class MedicationRepository {
     required DoseAction action,
     String? note,
   });
+  Stream<List<DoseEvent>> watchDoseHistory({String? planId});
   Future<List<DoseEvent>> doseHistory({
     String? planId,
     DateTime? from,

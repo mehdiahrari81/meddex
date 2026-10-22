@@ -1,77 +1,60 @@
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../domain/providers/medical_providers.dart';
 import '../domain/prescription_models.dart';
 import '../domain/prescription_providers.dart';
 
-class MlKitOnDeviceOcrProvider implements OcrProvider {
-  factory MlKitOnDeviceOcrProvider({Uuid uuid = const Uuid()}) =>
-      MlKitOnDeviceOcrProvider._(uuid);
-
-  MlKitOnDeviceOcrProvider._(this._uuid);
-
-  final Uuid _uuid;
+/// Apple Vision on iOS and bundled ML Kit on Android; image pixels stay on-device.
+class NativeOnDeviceOcrProvider implements OcrProvider {
+  const NativeOnDeviceOcrProvider();
+  final Uuid _uuid = const Uuid();
+  static const _channel = MethodChannel('mediexplain/document_capture');
 
   @override
   Future<PrescriptionOcrResult> recognize(ImageReference imageReference) async {
-    final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
-    try {
-      final result = await recognizer.processImage(
-        InputImage.fromFilePath(imageReference.localPath),
-      );
-      final blocks = result.blocks.map(_block).toList(growable: false);
-      return PrescriptionOcrResult(
-        id: _uuid.v4(),
-        pageNumber: imageReference.pageNumber,
-        fullText: result.text,
-        blocks: blocks,
-        provider: 'google_mlkit_text_recognition',
-        providerVersion: '0.16.0',
-        processedAt: DateTime.now().toUtc(),
-        script: _scriptFor(result.text),
-      );
-    } finally {
-      await recognizer.close();
+    final result = await _channel.invokeMapMethod<String, Object?>(
+      'recognizeText',
+      {'path': imageReference.localPath},
+    );
+    if (result == null) {
+      throw const FormatException('OCR did not return a result.');
     }
-  }
-
-  OcrBlock _block(TextBlock value) => OcrBlock(
-    text: value.text,
-    region: _region(value.boundingBox),
-    lines: value.lines.map(_line).toList(growable: false),
-    confidence: null,
-    script: _scriptFor(value.text),
-  );
-
-  OcrLine _line(TextLine value) => OcrLine(
-    text: value.text,
-    region: _region(value.boundingBox),
-    elements: value.elements.map(_element).toList(growable: false),
-    confidence: value.confidence,
-    script: _scriptFor(value.text),
-  );
-
-  OcrElement _element(TextElement value) => OcrElement(
-    text: value.text,
-    region: _region(value.boundingBox),
-    confidence: value.confidence,
-    script: _scriptFor(value.text),
-  );
-
-  ImageRegion _region(dynamic rect) => ImageRegion(
-    left: rect.left as double,
-    top: rect.top as double,
-    right: rect.right as double,
-    bottom: rect.bottom as double,
-  );
-
-  OcrScript _scriptFor(String text) {
-    final hasUrdu = RegExp(r'[\u0600-\u06ff]').hasMatch(text);
-    final hasLatin = RegExp(r'[A-Za-z]').hasMatch(text);
-    if (hasUrdu && hasLatin) return OcrScript.mixed;
-    if (hasUrdu) return OcrScript.urdu;
-    if (hasLatin) return OcrScript.latin;
-    return OcrScript.unknown;
+    final text = result['text']! as String;
+    final lines = (result['lines']! as List)
+        .map((raw) {
+          final line = Map<String, Object?>.from(raw as Map);
+          final region = ImageRegion.fromJson(
+            Map<String, Object?>.from(line['region']! as Map),
+          );
+          return OcrLine(
+            text: line['text']! as String,
+            region: region,
+            elements: const [],
+            confidence: (line['confidence'] as num?)?.toDouble(),
+            script: OcrScript.latin,
+          );
+        })
+        .toList(growable: false);
+    return PrescriptionOcrResult(
+      id: _uuid.v4(),
+      pageNumber: imageReference.pageNumber,
+      fullText: text,
+      blocks: lines
+          .map(
+            (line) => OcrBlock(
+              text: line.text,
+              region: line.region,
+              lines: [line],
+              confidence: line.confidence,
+              script: line.script,
+            ),
+          )
+          .toList(growable: false),
+      provider: result['provider']! as String,
+      providerVersion: result['version']! as String,
+      processedAt: DateTime.now().toUtc(),
+      script: OcrScript.latin,
+    );
   }
 }

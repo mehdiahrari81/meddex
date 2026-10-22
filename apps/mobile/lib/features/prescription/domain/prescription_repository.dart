@@ -50,15 +50,20 @@ abstract interface class PrescriptionRepository {
     String prescriptionId,
     List<PrescriptionOcrResult> results,
   );
+  Future<List<PrescriptionOcrResult>> ocrResults(String prescriptionId);
   Future<void> storeParsedItems(
     String prescriptionId,
-    List<PrescriptionItem> items,
-  );
+    List<PrescriptionItem> items, {
+    String? parserVersion,
+  });
   Future<void> replaceParsedItemsFromCorrectedText(
     String prescriptionId,
     String correctedText,
-    List<PrescriptionItem> items,
-  );
+    List<PrescriptionItem> items, {
+    String? ocrProvider,
+    String? ocrProviderVersion,
+    String? parserVersion,
+  });
   Future<void> addManualItem(String prescriptionId, PrescriptionItem item);
   Future<void> editField(
     String prescriptionId,
@@ -70,6 +75,7 @@ abstract interface class PrescriptionRepository {
     String itemId,
     PrescriptionFieldType type,
   );
+  Future<void> confirmReviewedItem(String prescriptionId, String itemId);
   Future<void> setItemState(
     String prescriptionId,
     String itemId,

@@ -184,6 +184,29 @@ class RxNormProvider(_SafeHttpProvider, DrugNormalizationProvider):
     version = "REST-exact-v2"
     base_url = "https://rxnav.nlm.nih.gov/REST"
 
+    def ingredient(self, rxcui: str, expected_name: str) -> ProviderCandidate | None:
+        """Verify a curated ingredient/combination, without selecting a clinical product."""
+        if not rxcui.isdigit():
+            raise ValueError("invalid_rxcui")
+        data = self.get(f"{self.base_url}/rxcui/{rxcui}/properties.json", params={}).json()
+        properties = data.get("properties") or {}
+        name = str(properties.get("name") or "")
+        if properties.get("tty") not in {"IN", "PIN", "MIN"} or normalize_search(
+            name
+        ) != normalize_search(expected_name):
+            return None
+        return ProviderCandidate(
+            external_id=rxcui,
+            canonical_name=name,
+            generic_name=name,
+            provider=self.name,
+            provider_version=self.version,
+            country="US",
+            ingredients=tuple(Ingredient(name=part) for part in name.split(" / ")),
+            identifiers=({"type": "rxcui", "value": rxcui, "jurisdiction": "US"},),
+            metadata={"term_type": str(properties["tty"])},
+        )
+
     def search(self, query: str, *, country: str | None = None) -> list[ProviderCandidate]:
         response = self.get(
             f"{self.base_url}/Prescribe/drugs.json",
@@ -388,12 +411,13 @@ class DailyMedProvider(_SafeHttpProvider, RegulatoryDrugLabelProvider):
 class DrapDatasetProvider(CountryDrugRegistryProvider, BarcodeResolutionProvider):
     name = "drap_dataset"
     version = "admin-imported"
+    country = "PK"
 
     def __init__(self, db: Session):
         self.db = db
 
     def search(self, query: str, *, country: str | None = None) -> list[ProviderCandidate]:
-        if country not in {None, "PK"}:
+        if country not in {None, self.country}:
             return []
         needle = f"%{normalize_search(query)}%"
         identities = (
@@ -407,7 +431,7 @@ class DrapDatasetProvider(CountryDrugRegistryProvider, BarcodeResolutionProvider
                 .join(MedicationProviderMapping)
                 .where(
                     MedicationProviderMapping.provider == self.name,
-                    MedicationIdentity.country == "PK",
+                    MedicationIdentity.country == self.country,
                     or_(
                         MedicationIdentity.normalized_name.ilike(needle),
                         MedicationIdentity.generic_name.ilike(needle),
@@ -458,7 +482,7 @@ class DrapDatasetProvider(CountryDrugRegistryProvider, BarcodeResolutionProvider
                 for item in sorted(identity.ingredients, key=lambda item: item.position)
             ),
             dosage_form=identity.dosage_form,
-            country="PK",
+            country=self.country,
             identifiers=tuple(
                 {
                     "type": item.identifier_type,
@@ -477,3 +501,11 @@ def _strip_html(value: str) -> str:
 
 def source_url_with_query(base: str, params: dict[str, str]) -> str:
     return f"{base}?{urlencode(params)}"
+
+
+class RxNormReferenceProvider(DrapDatasetProvider):
+    """Search installed, attributed US identities when the upstream API is offline."""
+
+    name = "rxnorm"
+    version = "installed-reference"
+    country = "US"

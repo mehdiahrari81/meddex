@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_routes.dart';
 import '../../../core/localization/localization_extension.dart';
+import '../../../core/errors/app_error.dart';
 import '../../../design_system/tokens.dart';
 import '../../../design_system/widgets/buttons.dart';
 import '../../../design_system/widgets/forms.dart';
@@ -105,9 +106,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       ),
                       if (auth.hasError) ...[
                         const SizedBox(height: AppSpacing.md),
-                        AppInlineError(
-                          message: context.l10n.authenticationFailed,
-                        ),
+                        AppInlineError(message: _authError(auth.error)),
                       ],
                       if (!registering)
                         Align(
@@ -140,11 +139,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       TextButton(
-                        onPressed: () {
-                          ref
+                        onPressed: () async {
+                          await ref
                               .read(authControllerProvider.notifier)
                               .continueAsGuest();
-                          context.go(AppRoute.home.path);
+                          if (context.mounted) context.go(AppRoute.home.path);
                         },
                         child: Text(context.l10n.continueAsGuest),
                       ),
@@ -173,6 +172,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     if (value == null || value.isEmpty) return context.l10n.passwordRequired;
     if (widget.registering &&
         (value.length < 12 ||
+            value.length > 128 ||
             !value.contains(RegExp('[A-Z]')) ||
             !value.contains(RegExp('[a-z]')) ||
             !value.contains(RegExp('[0-9]')) ||
@@ -182,7 +182,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     return null;
   }
 
+  String _authError(Object? error) => switch (error) {
+    AccountExistsError() => context.l10n.authEmailExists,
+    AuthenticationExpiredError() => context.l10n.authInvalidCredentials,
+    NetworkUnavailableError() ||
+    RequestTimeoutError() => context.l10n.authConnectionFailed,
+    RateLimitedError() => context.l10n.authRateLimited,
+    _ => context.l10n.authenticationFailed,
+  };
+
   Future<void> _submit() async {
+    if (ref.read(authControllerProvider).isLoading) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
     final controller = ref.read(authControllerProvider.notifier);
     if (widget.registering) {

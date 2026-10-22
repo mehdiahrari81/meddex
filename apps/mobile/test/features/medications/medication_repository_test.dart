@@ -100,6 +100,71 @@ void main() {
     expect(payload['active'], isFalse);
   });
 
+  test(
+    'setting a reminder resumes a paused medicine in one saved snapshot',
+    () async {
+      final created = await repository.createPlan(manual());
+      await repository.setPlanActive(created.plan.id, false);
+      await repository.replaceSchedule(
+        created.plan.id,
+        type: MedicationScheduleType.onceDaily,
+        reminderTimes: const [600],
+        weekdays: const {},
+      );
+      final paused = (await repository.getPlan(created.plan.id))!;
+      expect(paused.plan.active, isFalse);
+      expect(paused.schedules.single.active, isFalse);
+
+      await repository.replaceSchedule(
+        created.plan.id,
+        type: MedicationScheduleType.onceDaily,
+        reminderTimes: const [600],
+        weekdays: const {},
+        activate: true,
+      );
+      final resumed = (await repository.getPlan(created.plan.id))!;
+      expect(resumed.plan.active, isTrue);
+      expect(resumed.schedules.single.active, isTrue);
+      expect(resumed.medication.status, MedicationStatus.active);
+      final operations = await database.select(database.syncOperations).get();
+      final payload = jsonDecode(operations.last.payload) as Map;
+      expect(payload['active'], isTrue);
+      expect(payload['medication_status'], 'active');
+      expect(
+        resumed.source.confirmedInstruction,
+        created.source.confirmedInstruction,
+      );
+    },
+  );
+
+  test(
+    'invalid reminder does not activate or erase a paused schedule',
+    () async {
+      final created = await repository.createPlan(manual());
+      await repository.setPlanActive(created.plan.id, false);
+      final before = await database.select(database.syncOperations).get();
+      await expectLater(
+        repository.replaceSchedule(
+          created.plan.id,
+          type: MedicationScheduleType.onceDaily,
+          reminderTimes: const [1440],
+          weekdays: const {},
+          activate: true,
+        ),
+        throwsArgumentError,
+      );
+      final unchanged = (await repository.getPlan(created.plan.id))!;
+      expect(unchanged.plan.active, isFalse);
+      expect(unchanged.schedules.single.active, isFalse);
+      expect(unchanged.schedules.single.times, created.schedules.single.times);
+      expect(unchanged.medication.status, MedicationStatus.pausedByUser);
+      expect(
+        await database.select(database.syncOperations).get(),
+        hasLength(before.length),
+      );
+    },
+  );
+
   test('unverified OCR item cannot create medication plan', () async {
     await database
         .into(database.prescriptions)

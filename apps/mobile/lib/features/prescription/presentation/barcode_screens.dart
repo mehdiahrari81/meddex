@@ -164,9 +164,8 @@ class _MedicineBarcodeScannerScreenState
               child: Padding(
                 padding: EdgeInsets.all(AppSpacing.md),
                 child: AppBanner(
-                  message:
-                      'Frame a medicine package barcode. A code is not proof of medicine identity.',
-                  icon: Icons.qr_code_2_rounded,
+                  message: 'Frame the medicine package barcode.',
+                  icon: Icons.qr_code_2,
                 ),
               ),
             ),

@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
-import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart';
+import 'package:flutter/services.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart' as permissions;
@@ -81,28 +81,25 @@ class DevicePrescriptionCaptureProvider implements PrescriptionCaptureProvider {
 
   @override
   Future<List<CapturedPrescriptionPage>> scanDocument() async {
-    if (kIsWeb || !Platform.isAndroid) {
+    if (kIsWeb ||
+        (defaultTargetPlatform != TargetPlatform.iOS &&
+            defaultTargetPlatform != TargetPlatform.android)) {
       throw UnsupportedError(
-        'Automatic document-edge scanning is currently available on Android.',
+        'Document scanning requires an iOS or Android camera.',
       );
     }
-    final scanner = DocumentScanner(
-      options: DocumentScannerOptions(
-        documentFormats: const {DocumentFormat.jpeg},
-        pageLimit: 10,
-        mode: ScannerMode.full,
-        isGalleryImport: true,
-      ),
-    );
+    final paths =
+        await const MethodChannel(
+          'mediexplain/document_capture',
+        ).invokeListMethod<String>('scanDocument') ??
+        const [];
+    final output = <CapturedPrescriptionPage>[];
     try {
-      final result = await scanner.scanDocument();
-      final images = result.images ?? const <String>[];
-      final output = <CapturedPrescriptionPage>[];
-      for (var index = 0; index < images.length; index++) {
+      for (var index = 0; index < paths.length; index++) {
         output.add(
           CapturedPrescriptionPage(
             image: await _store.persistImported(
-              images[index],
+              paths[index],
               pageNumber: index + 1,
             ),
             sourceType: PrescriptionSourceType.documentScanner,
@@ -111,7 +108,10 @@ class DevicePrescriptionCaptureProvider implements PrescriptionCaptureProvider {
       }
       return output;
     } finally {
-      await scanner.close();
+      for (final path in paths) {
+        final file = File(path);
+        if (await file.exists()) await file.delete();
+      }
     }
   }
 }

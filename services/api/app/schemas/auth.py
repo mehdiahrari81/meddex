@@ -22,12 +22,26 @@ class PasswordMixin(StrictSchema):
         return value
 
 
-class RegisterRequest(PasswordMixin):
+class EmailMixin(StrictSchema):
+    email: EmailStr
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def strip_email(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+
+class RegisterRequest(PasswordMixin, EmailMixin):
     email: EmailStr
     display_name: str = Field(min_length=1, max_length=120)
 
+    @field_validator("display_name", mode="before")
+    @classmethod
+    def strip_name(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
 
-class LoginRequest(StrictSchema):
+
+class LoginRequest(EmailMixin):
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
 
@@ -36,7 +50,7 @@ class RefreshRequest(StrictSchema):
     refresh_token: str = Field(min_length=32, max_length=512)
 
 
-class ForgotPasswordRequest(StrictSchema):
+class ForgotPasswordRequest(EmailMixin):
     email: EmailStr
 
 

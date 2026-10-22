@@ -23,6 +23,7 @@ class _FlashcardSessionScreenState
   var _index = 0;
   var _revealed = false;
   var _completed = false;
+  bool _saving = false;
 
   @override
   Widget build(BuildContext context) {
@@ -112,23 +113,27 @@ class _FlashcardSessionScreenState
                       runSpacing: AppSpacing.sm,
                       children: [
                         OutlinedButton(
-                          onPressed: () =>
-                              _review(card, ReviewPerformance.again),
+                          onPressed: _saving
+                              ? null
+                              : () => _review(card, ReviewPerformance.again),
                           child: Text(context.l10n.again),
                         ),
                         OutlinedButton(
-                          onPressed: () =>
-                              _review(card, ReviewPerformance.hard),
+                          onPressed: _saving
+                              ? null
+                              : () => _review(card, ReviewPerformance.hard),
                           child: Text(context.l10n.unsure),
                         ),
                         FilledButton.tonal(
-                          onPressed: () =>
-                              _review(card, ReviewPerformance.good),
+                          onPressed: _saving
+                              ? null
+                              : () => _review(card, ReviewPerformance.good),
                           child: Text(context.l10n.knewIt),
                         ),
                         FilledButton(
-                          onPressed: () =>
-                              _review(card, ReviewPerformance.easy),
+                          onPressed: _saving
+                              ? null
+                              : () => _review(card, ReviewPerformance.easy),
                           child: Text(context.l10n.easy),
                         ),
                       ],
@@ -143,27 +148,39 @@ class _FlashcardSessionScreenState
   }
 
   Future<void> _review(Flashcard card, ReviewPerformance performance) async {
-    final repository = ref.read(learningRepositoryProvider);
-    final now = DateTime.now().toUtc();
-    final current =
-        await repository.flashcardSchedule(card.id) ??
-        SpacedRepetitionScheduler().initial(card.id, now);
-    final next = const SpacedRepetitionScheduler().review(
-      current: current,
-      performance: performance,
-      reviewedAt: now,
-    );
-    await repository.saveFlashcardReview(next);
-    if (!mounted) return;
-    final cards = ref.read(dueFlashcardsProvider).valueOrNull ?? const [];
-    setState(() {
-      if (_index >= cards.length - 1) {
-        _completed = true;
-      } else {
-        _index += 1;
-        _revealed = false;
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      final repository = ref.read(learningRepositoryProvider);
+      final now = DateTime.now().toUtc();
+      final current =
+          await repository.flashcardSchedule(card.id) ??
+          SpacedRepetitionScheduler().initial(card.id, now);
+      final next = const SpacedRepetitionScheduler().review(
+        current: current,
+        performance: performance,
+        reviewedAt: now,
+      );
+      await repository.saveFlashcardReview(next);
+      if (!mounted) return;
+      final cards = ref.read(dueFlashcardsProvider).valueOrNull ?? const [];
+      setState(() {
+        if (_index >= cards.length - 1) {
+          _completed = true;
+        } else {
+          _index += 1;
+          _revealed = false;
+        }
+      });
+      ref.invalidate(learningDashboardProvider);
+    } on Object {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.learningSaveFailed)),
+        );
       }
-    });
-    ref.invalidate(learningDashboardProvider);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 }

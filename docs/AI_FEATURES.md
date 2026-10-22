@@ -1,6 +1,6 @@
 # AI assistant and voice features
 
-The local API uses the existing Ollama `qwen3:8b` model. No cloud API key is required. Medicine information comes from retrieved official sources; the model explains that information and is never itself a medical source. Production configuration still defaults to AI disabled.
+The current API uses Gemini first, then Groq, then local Ollama `qwen3:1.7b` for text explanations. Image reading and medicine separation use Gemini → Groq; images never go to the text-only local model. See [cloud fallback and approval delivery](GEMINI_GROQ_APPROVAL_2026-10-21.md) for configuration, tests and limitations. Both keys belong in `services/api/.env`. Medicine information comes from retrieved official sources; the model explains that information and is never itself a medical source. The older local-only verification below is historical and its 8B model is not selected by the current app.
 
 ## Use the running app
 

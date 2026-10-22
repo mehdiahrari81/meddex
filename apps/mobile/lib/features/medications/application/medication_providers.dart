@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/database_provider.dart';
 import '../../../core/notifications/notification_service.dart';
 import '../../../core/logging/app_logger.dart';
+import '../../settings/application/settings_controller.dart';
 import '../data/local_medication_repository.dart';
 import '../domain/medication_models.dart';
 import '../domain/medication_repository.dart';
@@ -24,9 +25,10 @@ final medicationPlanProvider =
     );
 
 final medicationDoseHistoryProvider =
-    FutureProvider.family<List<DoseEvent>, String?>(
-      (ref, planId) =>
-          ref.watch(medicationRepositoryProvider).doseHistory(planId: planId),
+    StreamProvider.family<List<DoseEvent>, String?>(
+      (ref, planId) => ref
+          .watch(medicationRepositoryProvider)
+          .watchDoseHistory(planId: planId),
     );
 
 final medicationActivityProvider =
@@ -81,13 +83,24 @@ final medicationReminderServiceProvider = Provider<MedicationReminderService>(
     repository: ref.watch(medicationRepositoryProvider),
     scheduler: ref.watch(notificationSchedulerProvider),
     engine: const ScheduleEngine(),
+    notificationsEnabled: () =>
+        ref
+            .read(settingsControllerProvider)
+            .valueOrNull
+            ?.notificationsEnabled ??
+        true,
   ),
 );
 
 final accountReminderCoordinatorProvider = Provider(
   (ref) => AccountReminderCoordinator(() async {
     final service = ref.read(medicationReminderServiceProvider);
-    await ref.read(notificationAdapterProvider).initialize(service.handle);
+    await ref
+        .read(notificationAdapterProvider)
+        .initialize(
+          (response) =>
+              ref.read(medicationReminderServiceProvider).handle(response),
+        );
     await service.rebuild(
       plans: await ref.read(medicationPlansProvider.future),
     );
@@ -107,4 +120,10 @@ class AccountReminderCoordinator {
           fields: {'error_type': error.runtimeType.toString()},
         );
       });
+
+  Future<void> cancelAll(Future<void> Function() cancel) {
+    final operation = _pending.then((_) => cancel());
+    _pending = operation.then<void>((_) {}, onError: (Object _) {});
+    return operation;
+  }
 }

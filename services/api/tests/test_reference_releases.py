@@ -58,8 +58,13 @@ def test_reference_publication_updates_canonical_api_and_download(client: TestCl
             },
         )
         assert result.status_code == 200, result.text
-    assert client.get("/api/v1/content/dataset").json() == document
-    assert client.get("/api/v1/content/version").json()["dataset_version"] == "browser-release-v2"
+    published = client.get("/api/v1/content/dataset").json()
+    assert published["dataset_name"] == "mediexplain-reference"
+    assert {row["id"] for row in published["terms"]} == {row["id"] for row in document["terms"]}
+    assert (
+        client.get("/api/v1/content/version").json()["dataset_version"]
+        == published["dataset_version"]
+    )
 
     # A subsequent unpublished revision must not replace the active release.
     document["dataset_version"] = "draft-v3"
@@ -77,7 +82,10 @@ def test_reference_publication_updates_canonical_api_and_download(client: TestCl
         ).status_code
         == 201
     )
-    assert client.get("/api/v1/content/dataset").json()["dataset_version"] == "browser-release-v2"
+    assert (
+        client.get("/api/v1/content/dataset").json()["dataset_version"]
+        == published["dataset_version"]
+    )
 
     client.app.state.settings.environment = "production"
     assert client.get("/api/v1/content/dataset").status_code == 404

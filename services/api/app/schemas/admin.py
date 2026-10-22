@@ -22,6 +22,7 @@ class AdminSessionRead(StrictSchema):
 
 
 class AdminMeRead(StrictSchema):
+    local_self_review_allowed: bool = False
     user_id: UUID
     email: EmailStr
     role: str
@@ -32,7 +33,14 @@ class AdminMeRead(StrictSchema):
 class GovernedContentCreate(StrictSchema):
     stable_id: str = Field(min_length=1, max_length=120, pattern=r"^[A-Za-z0-9._-]+$")
     content_type: Literal[
-        "terminology", "morphology", "abbreviation", "lesson", "quiz", "translation", "dataset"
+        "terminology",
+        "morphology",
+        "abbreviation",
+        "lesson",
+        "flashcard",
+        "quiz",
+        "translation",
+        "dataset",
     ]
     content: dict[str, object]
     source_metadata: dict[str, object]
@@ -40,6 +48,7 @@ class GovernedContentCreate(StrictSchema):
 
 
 class GovernedContentRead(StrictSchema):
+    title: str | None = None
     stable_id: str
     content_type: str
     lifecycle_state: str

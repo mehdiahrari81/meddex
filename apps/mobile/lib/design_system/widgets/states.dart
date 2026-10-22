@@ -173,20 +173,43 @@ class AppBanner extends StatelessWidget {
   final IconData icon;
 
   @override
-  Widget build(BuildContext context) => Material(
-    color: Theme.of(context).colorScheme.secondaryContainer,
-    child: Padding(
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(
+          colors.primary.withValues(alpha: 0.07),
+          colors.surface,
+        ),
+        borderRadius: BorderRadius.circular(AppRadii.medium),
+        border: Border.all(color: colors.primary.withValues(alpha: 0.18)),
+      ),
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
       ),
       child: Row(
         children: [
-          Icon(icon, size: 20),
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.xs),
+            decoration: BoxDecoration(
+              color: colors.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 20, color: colors.primary),
+          ),
           const SizedBox(width: AppSpacing.sm),
-          Expanded(child: Text(message)),
+          Expanded(
+            child: Text(
+              message,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colors.onSurface,
+              ),
+            ),
+          ),
         ],
       ),
-    ),
-  );
+    );
+  }
 }

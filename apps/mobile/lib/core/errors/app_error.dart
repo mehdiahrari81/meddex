@@ -47,6 +47,14 @@ final class ExternalProviderError extends AppError {
   const ExternalProviderError({super.cause}) : super('external_provider_error');
 }
 
+final class PrescriptionServiceError extends AppError {
+  const PrescriptionServiceError(super.code, {super.cause});
+}
+
 final class UnknownAppError extends AppError {
   const UnknownAppError({super.cause}) : super('unknown_error');
+}
+
+final class AccountExistsError extends AppError {
+  const AccountExistsError({super.cause}) : super('email_exists');
 }

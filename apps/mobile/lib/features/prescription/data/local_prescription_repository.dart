@@ -444,10 +444,57 @@ class LocalPrescriptionRepository implements PrescriptionRepository {
   }
 
   @override
+  Future<List<PrescriptionOcrResult>> ocrResults(String prescriptionId) async {
+    final query =
+        _database.select(_database.prescriptionOcrResults).join([
+            innerJoin(
+              _database.prescriptionPages,
+              _database.prescriptionPages.id.equalsExp(
+                _database.prescriptionOcrResults.pageId,
+              ),
+            ),
+          ])
+          ..where(
+            _database.prescriptionOcrResults.prescriptionId.equals(
+              prescriptionId,
+            ),
+          )
+          ..orderBy([
+            OrderingTerm.desc(_database.prescriptionOcrResults.processedAt),
+          ]);
+    final latest = <int, PrescriptionOcrResult>{};
+    for (final result in await query.get()) {
+      final row = result.readTable(_database.prescriptionOcrResults);
+      final page = result.readTable(_database.prescriptionPages);
+      latest.putIfAbsent(
+        page.pageNumber,
+        () => PrescriptionOcrResult(
+          id: row.id,
+          pageNumber: page.pageNumber,
+          fullText: row.fullText,
+          blocks: (jsonDecode(row.blocksJson) as List)
+              .map(
+                (value) =>
+                    OcrBlock.fromJson(Map<String, Object?>.from(value as Map)),
+              )
+              .toList(),
+          provider: row.provider,
+          providerVersion: row.providerVersion,
+          processedAt: row.processedAt,
+          script: OcrScript.values.byName(row.script),
+        ),
+      );
+    }
+    return latest.values.toList()
+      ..sort((a, b) => a.pageNumber.compareTo(b.pageNumber));
+  }
+
+  @override
   Future<void> storeParsedItems(
     String prescriptionId,
-    List<PrescriptionItem> items,
-  ) async {
+    List<PrescriptionItem> items, {
+    String? parserVersion,
+  }) async {
     final value = await get(prescriptionId);
     if (value == null) throw StateError('Prescription draft not found.');
     _pipeline.requireTransition(
@@ -466,6 +513,13 @@ class LocalPrescriptionRepository implements PrescriptionRepository {
         prescriptionId,
         PrescriptionPipelineState.userReviewRequired,
       );
+      if (parserVersion != null) {
+        await (_database.update(
+          _database.prescriptions,
+        )..where((row) => row.id.equals(prescriptionId))).write(
+          db.PrescriptionsCompanion(parserVersion: Value(parserVersion)),
+        );
+      }
     });
   }
 
@@ -473,14 +527,18 @@ class LocalPrescriptionRepository implements PrescriptionRepository {
   Future<void> replaceParsedItemsFromCorrectedText(
     String prescriptionId,
     String correctedText,
-    List<PrescriptionItem> items,
-  ) async {
+    List<PrescriptionItem> items, {
+    String? ocrProvider,
+    String? ocrProviderVersion,
+    String? parserVersion,
+  }) async {
     final prescription = await get(prescriptionId);
     if (prescription == null) throw StateError('Prescription not found.');
     final protected = prescription.items.any(
       (item) =>
           item.state == PrescriptionItemState.confirmedByUser ||
-          item.state == PrescriptionItemState.readyForLookup,
+          item.state == PrescriptionItemState.readyForLookup ||
+          item.fields.values.any((field) => field.userConfirmed),
     );
     if (protected) {
       throw StateError(
@@ -499,9 +557,28 @@ class LocalPrescriptionRepository implements PrescriptionRepository {
       )..where((row) => row.id.equals(prescriptionId))).write(
         db.PrescriptionsCompanion(
           rawOcrText: Value(correctedText),
+          parserVersion: parserVersion == null
+              ? const Value.absent()
+              : Value(parserVersion),
+          ocrProvider: ocrProvider == null
+              ? const Value.absent()
+              : Value(ocrProvider),
+          ocrProviderVersion: ocrProviderVersion == null
+              ? const Value.absent()
+              : Value(ocrProviderVersion),
           updatedAt: Value(_clock()),
         ),
       );
+      if (prescription.pipelineState == PrescriptionPipelineState.ocrResult) {
+        await _updatePipeline(
+          prescriptionId,
+          PrescriptionPipelineState.parsedCandidates,
+        );
+        await _updatePipeline(
+          prescriptionId,
+          PrescriptionPipelineState.userReviewRequired,
+        );
+      }
     });
   }
 
@@ -595,11 +672,74 @@ class LocalPrescriptionRepository implements PrescriptionRepository {
   ) async {
     final item = await _requireItem(prescriptionId, itemId);
     final field = item.field(type);
-    if (!field.hasValue || field.ambiguous) {
+    if (!field.hasValue || field.needsClarification) {
       throw StateError('Resolve the field before confirming it.');
     }
     await _upsertField(itemId, field.confirm(_clock()));
     await _touch(prescriptionId);
+  }
+
+  @override
+  Future<void> confirmReviewedItem(String prescriptionId, String itemId) async {
+    await _database.transaction(() async {
+      var item = await _requireItem(prescriptionId, itemId);
+      if (!item.field(PrescriptionFieldType.medicationName).hasValue ||
+          item.state == PrescriptionItemState.rejected) {
+        throw StateError('Check the medicine name before confirming.');
+      }
+      // A readable but flagged field can be checked by the user. Literal gaps
+      // in a medicine/dose still need a manual correction, not a fabricated value.
+      for (final type in const [
+        PrescriptionFieldType.medicationName,
+        PrescriptionFieldType.strength,
+        PrescriptionFieldType.dosageForm,
+        PrescriptionFieldType.dose,
+        PrescriptionFieldType.frequency,
+      ]) {
+        if (RegExp(
+          r'\?|\[illegible\]|\[uncertain:',
+          caseSensitive: false,
+        ).hasMatch(item.field(type).currentValue ?? '')) {
+          throw StateError('Correct unreadable text before confirming.');
+        }
+      }
+      if (item.state == PrescriptionItemState.readyForLookup &&
+          item.fields.values.every(
+            (field) => !field.hasValue || field.userConfirmed,
+          )) {
+        return;
+      }
+      final now = _clock();
+      for (final field in item.fields.values) {
+        await _upsertField(itemId, field.confirmAfterReview(now));
+      }
+      item = await _requireItem(prescriptionId, itemId);
+      if (item.state == PrescriptionItemState.readyForLookup) {
+        await _writeItemState(item, PrescriptionItemState.readyForLookup, now);
+        await _touch(prescriptionId);
+        return;
+      }
+      if (item.state == PrescriptionItemState.detected) {
+        await setItemState(
+          prescriptionId,
+          itemId,
+          PrescriptionItemState.needsReview,
+        );
+      }
+      item = await _requireItem(prescriptionId, itemId);
+      if (item.state != PrescriptionItemState.confirmedByUser) {
+        await setItemState(
+          prescriptionId,
+          itemId,
+          PrescriptionItemState.confirmedByUser,
+        );
+      }
+      await setItemState(
+        prescriptionId,
+        itemId,
+        PrescriptionItemState.readyForLookup,
+      );
+    });
   }
 
   @override
@@ -648,12 +788,28 @@ class LocalPrescriptionRepository implements PrescriptionRepository {
 
   @override
   Future<void> deleteItem(String prescriptionId, String itemId) async {
-    await (_database.delete(_database.prescriptionItems)..where(
-          (row) =>
-              row.id.equals(itemId) & row.prescriptionId.equals(prescriptionId),
-        ))
-        .go();
-    await _touch(prescriptionId);
+    await _requireItem(prescriptionId, itemId);
+    await _database.transaction(() async {
+      await (_database.delete(_database.prescriptionItems)..where(
+            (row) =>
+                row.id.equals(itemId) &
+                row.prescriptionId.equals(prescriptionId),
+          ))
+          .go();
+      await _touch(prescriptionId);
+      final alreadySaved =
+          await (_database.select(_database.syncOperations)
+                ..where(
+                  (row) =>
+                      row.entityType.equals('prescription') &
+                      row.entityId.equals(prescriptionId),
+                )
+                ..limit(1))
+              .getSingleOrNull();
+      if (alreadySaved != null) {
+        await _enqueueStructured(prescriptionId, 'upsert');
+      }
+    });
   }
 
   @override
@@ -673,6 +829,10 @@ class LocalPrescriptionRepository implements PrescriptionRepository {
   Future<void> confirmPrescription(String prescriptionId) async {
     var prescription = await get(prescriptionId);
     if (prescription == null) throw StateError('Prescription not found.');
+    if (prescription.pipelineState ==
+        PrescriptionPipelineState.readyForMedicationLookup) {
+      return;
+    }
     if (prescription.items.isEmpty) {
       throw StateError('Add at least one medicine.');
     }
@@ -733,23 +893,146 @@ class LocalPrescriptionRepository implements PrescriptionRepository {
 
   @override
   Future<void> deletePrescription(String prescriptionId) async {
+    if (await get(prescriptionId) == null) return;
     await deleteImages(prescriptionId);
-    await (_database.update(
-      _database.prescriptions,
-    )..where((row) => row.id.equals(prescriptionId))).write(
-      db.PrescriptionsCompanion(
-        deletedAt: Value(_clock()),
-        syncState: const Value('pending'),
-        updatedAt: Value(_clock()),
-      ),
-    );
-    await _sync.enqueue(
-      entityType: 'prescription',
-      entityId: prescriptionId,
-      operationType: 'delete',
-      payload: jsonEncode({'id': prescriptionId}),
-      tombstone: true,
-    );
+    await _database.transaction(() async {
+      final dependencies = await _retainSavedMedicationSync(prescriptionId);
+      await (_database.delete(
+        _database.prescriptionItems,
+      )..where((row) => row.prescriptionId.equals(prescriptionId))).go();
+      await (_database.delete(
+        _database.prescriptionOcrResults,
+      )..where((row) => row.prescriptionId.equals(prescriptionId))).go();
+      await (_database.delete(
+        _database.prescriptionPages,
+      )..where((row) => row.prescriptionId.equals(prescriptionId))).go();
+      await (_database.update(
+        _database.prescriptions,
+      )..where((row) => row.id.equals(prescriptionId))).write(
+        db.PrescriptionsCompanion(
+          rawOcrText: const Value(null),
+          userConfirmedAt: const Value(null),
+          deletedAt: Value(_clock()),
+          syncState: const Value('pending'),
+          updatedAt: Value(_clock()),
+        ),
+      );
+      await _sync.enqueue(
+        entityType: 'prescription',
+        entityId: prescriptionId,
+        operationType: 'delete',
+        payload: jsonEncode({
+          'id': prescriptionId,
+          if (dependencies.isNotEmpty) syncDependenciesKey: dependencies,
+        }),
+        tombstone: true,
+      );
+    });
+  }
+
+  Future<List<String>> _retainSavedMedicationSync(String prescriptionId) async {
+    final items = await (_database.select(
+      _database.prescriptionItems,
+    )..where((row) => row.prescriptionId.equals(prescriptionId))).get();
+    final itemIds = items.map((item) => item.id).toSet();
+    final pendingPlans =
+        await (_database.select(_database.syncOperations)..where(
+              (row) =>
+                  row.entityType.equals('medication_plan') &
+                  row.operationType.equals('upsert') &
+                  row.syncState.isNotValue('synced'),
+            ))
+            .get();
+    final relatedPlans = pendingPlans.where((operation) {
+      final payload = jsonDecode(operation.payload) as Map;
+      return payload['source_type'] == 'confirmedPrescription' &&
+          itemIds.contains(payload['prescription_item_id']);
+    }).toList();
+    final requiredItems = relatedPlans
+        .map(
+          (operation) =>
+              (jsonDecode(operation.payload) as Map)['prescription_item_id']
+                  as String,
+        )
+        .toSet();
+    var sourceOperations =
+        await (_database.select(_database.syncOperations)
+              ..where(
+                (row) =>
+                    row.entityType.equals('prescription') &
+                    row.entityId.equals(prescriptionId),
+              )
+              ..orderBy([(row) => OrderingTerm.asc(row.createdAt)]))
+            .get();
+    // Keep in-flight operations until their receipts arrive, then delete remotely.
+    final retained = sourceOperations
+        .where((operation) => operation.syncState == 'processing')
+        .map((operation) => operation.id)
+        .toSet();
+    if (relatedPlans.isNotEmpty) {
+      db.SyncOperation? source = sourceOperations.reversed.where((operation) {
+        if (operation.operationType != 'upsert') return false;
+        final payload = jsonDecode(operation.payload) as Map;
+        final sourceItems = (payload['items'] as List)
+            .map((item) => (item as Map)['id'])
+            .toSet();
+        return payload['verification_state'] == 'readyForMedicationLookup' &&
+            sourceItems.containsAll(requiredItems);
+      }).firstOrNull;
+      if (source == null) {
+        await _enqueueStructured(prescriptionId, 'upsert');
+        sourceOperations =
+            await (_database.select(_database.syncOperations)
+                  ..where(
+                    (row) =>
+                        row.entityType.equals('prescription') &
+                        row.entityId.equals(prescriptionId),
+                  )
+                  ..orderBy([(row) => OrderingTerm.asc(row.createdAt)]))
+                .get();
+        source = sourceOperations.last;
+      }
+      if (source.syncState != 'processing' && source.syncState != 'synced') {
+        final payload = (jsonDecode(source.payload) as Map)
+            .cast<String, Object?>();
+        // Retain only the already reviewed medicines the patient chose to save.
+        // Raw OCR, images, and other deleted prescription entries are never sent.
+        payload['items'] = (payload['items'] as List)
+            .where((item) => requiredItems.contains((item as Map)['id']))
+            .toList();
+        if (retained.isNotEmpty) {
+          payload[syncDependenciesKey] = retained.toList();
+        }
+        await (_database.update(
+          _database.syncOperations,
+        )..where((row) => row.id.equals(source!.id))).write(
+          db.SyncOperationsCompanion(payload: Value(jsonEncode(payload))),
+        );
+      }
+      retained.add(source.id);
+      for (final operation in relatedPlans) {
+        final payload = (jsonDecode(operation.payload) as Map)
+            .cast<String, Object?>();
+        payload[syncDependenciesKey] = {
+          ...(payload[syncDependenciesKey] as List?)?.cast<String>() ??
+              <String>[],
+          source.id,
+        }.toList();
+        await (_database.update(
+          _database.syncOperations,
+        )..where((row) => row.id.equals(operation.id))).write(
+          db.SyncOperationsCompanion(payload: Value(jsonEncode(payload))),
+        );
+      }
+    }
+    await (_database.delete(_database.syncOperations)..where(
+          (row) =>
+              row.entityType.equals('prescription') &
+              row.entityId.equals(prescriptionId) &
+              row.id.isNotIn(retained),
+        ))
+        .go();
+    return [...retained, ...relatedPlans.map((operation) => operation.id)];
   }
 
   @override

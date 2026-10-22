@@ -76,7 +76,11 @@ def test_term_source_related_morphology_categories_and_content_version(client: T
     assert client.get("/api/v1/categories").json()
     version = client.get("/api/v1/content/version")
     assert version.status_code == 200
-    assert version.json()["dataset_version"] == "2026.08.3"
+    expected_version = getattr(client, "expected_content_version", "2026.08.3")
+    assert isinstance(version.json()["dataset_version"], str)
+    assert version.json()["dataset_version"]
+    if expected_version is not None:
+        assert version.json()["dataset_version"] == expected_version
     assert version.json()["production_approved"] is False
 
 

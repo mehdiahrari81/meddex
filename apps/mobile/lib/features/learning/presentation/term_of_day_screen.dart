@@ -10,19 +10,12 @@ import '../../terminology/application/terminology_providers.dart';
 import '../../terminology/domain/medical_term.dart';
 import '../application/daily_term.dart';
 
-final _dailyTermProvider = FutureProvider<MedicalTerm?>((ref) async {
-  final terms = await ref
-      .watch(terminologyRepositoryProvider)
-      .browseTerms(limit: 100);
-  return const DailyTermSelector().select(terms, DateTime.now());
-});
-
 class TermOfDayScreen extends ConsumerWidget {
   const TermOfDayScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final daily = ref.watch(_dailyTermProvider);
+    final daily = ref.watch(dailyTermProvider);
     final saved = ref.watch(savedItemsProvider).valueOrNull ?? const [];
     return Scaffold(
       appBar: AppBar(title: Text(context.l10n.termOfTheDay)),
@@ -32,7 +25,7 @@ class TermOfDayScreen extends ConsumerWidget {
           title: context.l10n.startupErrorTitle,
           message: context.l10n.startupErrorMessage,
           retryLabel: context.l10n.retry,
-          onRetry: () => ref.invalidate(_dailyTermProvider),
+          onRetry: () => ref.invalidate(dailyTermProvider),
         ),
         data: (term) {
           if (term == null) {
@@ -113,7 +106,10 @@ class TermOfDayScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-              AppBanner(message: context.l10n.medicalDisclaimerShort),
+              AppBanner(
+                message: context.l10n.medicalDisclaimerShort,
+                icon: Icons.health_and_safety_outlined,
+              ),
             ],
           );
         },

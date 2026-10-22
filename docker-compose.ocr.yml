@@ -1,0 +1,20 @@
+# CPU handwriting recognition, independently of the optional conversational AI.
+services:
+  api:
+    build:
+      context: ./services/api
+      args:
+        INSTALL_OCR: "true"
+    volumes:
+      - handwriting_models:/home/mediexplain/.cache/huggingface
+    command: >-
+      sh -c "alembic upgrade head &&
+      python -m app.cli import-reference --if-empty --path /opt/mediexplain/reference/starter_dataset_v1.json &&
+      python -m app.cli import-reference --if-empty --additive --path /opt/mediexplain/reference/learning_expansion_v1.json &&
+      python -m app.cli import-medications --path /opt/mediexplain/medicine-reference/rxnorm_reference.json &&
+      python -m app.prepare_handwriting_model &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    healthcheck:
+      start_period: 180s
+volumes:
+  handwriting_models:

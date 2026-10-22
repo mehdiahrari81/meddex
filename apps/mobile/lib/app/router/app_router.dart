@@ -28,12 +28,14 @@ import '../../features/prescription/presentation/prescription_item_edit_screen.d
 import '../../features/prescription/presentation/prescription_preview_screen.dart';
 import '../../features/prescription/presentation/prescription_processing_screen.dart';
 import '../../features/prescription/presentation/prescription_review_screen.dart';
+import '../../features/prescription/presentation/prescription_explanations_screen.dart';
 import '../../features/prescription/presentation/prescription_scan_screen.dart';
 import '../../features/prescription/presentation/scan_medical_term_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/settings/application/settings_controller.dart';
 import '../../features/settings/domain/app_settings.dart';
 import '../../features/settings/presentation/settings_screen.dart';
+import '../../features/settings/presentation/app_information_screen.dart';
 import '../../features/saved/presentation/saved_library_screen.dart';
 import '../../features/shell/presentation/app_shell.dart';
 import '../../features/terminology/presentation/content_report_screen.dart';
@@ -162,7 +164,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoute.prescriptionHistory.path,
         name: AppRoute.prescriptionHistory.name,
-        builder: (context, state) => const PrescriptionHistoryScreen(),
+        builder: (context, state) => PrescriptionHistoryScreen(
+          showDraftsOnly: state.uri.queryParameters['drafts'] == 'true',
+        ),
       ),
       GoRoute(
         path: AppRoute.prescriptionPreview.path,
@@ -188,6 +192,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoute.prescriptionReview.path,
         name: AppRoute.prescriptionReview.name,
         builder: (context, state) => PrescriptionStructuredReviewScreen(
+          prescriptionId: state.pathParameters['id']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoute.prescriptionExplanations.path,
+        name: AppRoute.prescriptionExplanations.name,
+        builder: (context, state) => PrescriptionExplanationsScreen(
           prescriptionId: state.pathParameters['id']!,
         ),
       ),
@@ -248,6 +259,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           initialForm: state.uri.queryParameters['dosageForm'],
           autoSearch: state.uri.queryParameters['autoSearch'] == 'true',
           prescriptionItemId: state.uri.queryParameters['prescriptionItemId'],
+          explainAfterConfirm: state.uri.queryParameters['explain'] == 'true',
         ),
       ),
       GoRoute(
@@ -282,6 +294,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: AppRoute.medicineAssistant.name,
         builder: (context, state) => MedicationAssistantScreen(
           medicationId: state.pathParameters['id']!,
+          initialQuestion: state.uri.queryParameters['intro'] == 'true'
+              ? 'What is this medicine used for? Explain simply in two short sentences.'
+              : null,
         ),
       ),
       GoRoute(
@@ -466,6 +481,29 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     path: 'settings',
                     name: AppRoute.settings.name,
                     builder: (context, state) => const SettingsScreen(),
+                    routes: [
+                      GoRoute(
+                        path: 'privacy',
+                        name: AppRoute.privacyPolicy.name,
+                        builder: (_, _) => const AppInformationScreen(
+                          page: AppInformationPage.privacy,
+                        ),
+                      ),
+                      GoRoute(
+                        path: 'terms',
+                        name: AppRoute.terms.name,
+                        builder: (_, _) => const AppInformationScreen(
+                          page: AppInformationPage.terms,
+                        ),
+                      ),
+                      GoRoute(
+                        path: 'sources',
+                        name: AppRoute.dataSources.name,
+                        builder: (_, _) => const AppInformationScreen(
+                          page: AppInformationPage.sources,
+                        ),
+                      ),
+                    ],
                   ),
                   GoRoute(
                     path: 'sessions',

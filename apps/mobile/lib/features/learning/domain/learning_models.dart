@@ -203,6 +203,8 @@ class LearningDashboard {
   const LearningDashboard({
     required this.termsLearned,
     required this.lessonsCompleted,
+    this.totalLessons = 0,
+    this.totalFlashcards = 0,
     required this.flashcardsReviewed,
     required this.quizAccuracy,
     required this.dueReviews,
@@ -212,6 +214,10 @@ class LearningDashboard {
   });
   final int termsLearned;
   final int lessonsCompleted;
+  final int totalLessons;
+  final int totalFlashcards;
+  double get lessonCompletion =>
+      totalLessons == 0 ? 0 : lessonsCompleted / totalLessons;
   final int flashcardsReviewed;
   final double quizAccuracy;
   final int dueReviews;

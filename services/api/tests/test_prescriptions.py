@@ -125,8 +125,26 @@ def test_cross_user_access_is_hidden(client: TestClient, registered: dict[str, s
     )
     assert (
         client.delete(f"/api/v1/prescriptions/{server_id}", headers=second_headers).status_code
-        == 404
+        == 204
     )
+    assert (
+        client.get(f"/api/v1/prescriptions/{server_id}", headers=first_headers).status_code == 200
+    )
+
+
+def test_delete_is_idempotent_for_offline_drafts_and_lost_responses(
+    client: TestClient, registered: dict[str, str]
+) -> None:
+    headers = auth_headers(registered["access_token"])
+    prescription_id = "11111111-1111-4111-8111-111111111111"
+    endpoint = f"/api/v1/prescriptions/{prescription_id}"
+    # Deleting an offline draft must not leave its sync tombstone retrying forever.
+    assert client.delete(endpoint, headers=headers).status_code == 204
+    assert client.post("/api/v1/prescriptions", headers=headers, json=_payload()).status_code == 201
+    assert client.delete(endpoint, headers=headers).status_code == 204
+    assert client.delete(endpoint, headers=headers).status_code == 204
+    assert client.get(endpoint, headers=headers).status_code == 404
+    assert client.get("/api/v1/prescriptions", headers=headers).json() == []
 
 
 def test_confirm_requires_ready_items(client: TestClient, registered: dict[str, str]) -> None:

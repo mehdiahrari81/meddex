@@ -6,6 +6,7 @@ import '../../../design_system/tokens.dart';
 import '../../../design_system/widgets/buttons.dart';
 import '../../../design_system/widgets/states.dart';
 import '../application/prescription_workflow_controller.dart';
+import '../application/prescription_providers.dart';
 import '../domain/prescription_providers.dart';
 
 class PrescriptionProcessingScreen extends ConsumerStatefulWidget {
@@ -27,10 +28,18 @@ class _PrescriptionProcessingScreenState
     if (_started) return;
     _started = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref
-          .read(prescriptionWorkflowControllerProvider.notifier)
-          .process(widget.prescriptionId);
+      if (mounted) _processWithGemini();
     });
+  }
+
+  void _processWithGemini() {
+    ref
+        .read(prescriptionWorkflowControllerProvider.notifier)
+        .process(
+          widget.prescriptionId,
+          useGemini: true,
+          ocrOverride: ref.read(geminiHandwritingOcrProvider),
+        );
   }
 
   @override
@@ -38,7 +47,7 @@ class _PrescriptionProcessingScreenState
     ref.listen(prescriptionWorkflowControllerProvider, (previous, next) {
       if (next.stage == PrescriptionProcessingStage.reviewRequired &&
           previous?.stage != PrescriptionProcessingStage.reviewRequired) {
-        context.go('/prescriptions/${widget.prescriptionId}/ocr-review');
+        context.go('/prescriptions/${widget.prescriptionId}/review');
       }
     });
     final workflow = ref.watch(prescriptionWorkflowControllerProvider);
@@ -50,9 +59,11 @@ class _PrescriptionProcessingScreenState
         ),
         body: _ProcessingFailure(
           code: workflow.errorCode,
-          onRetry: () => ref
-              .read(prescriptionWorkflowControllerProvider.notifier)
-              .process(widget.prescriptionId),
+          message: workflow.errorMessage,
+          onRetry: _processWithGemini,
+          onHandwriting: _readHandwriting,
+          onRawText: () =>
+              context.go('/prescriptions/${widget.prescriptionId}/ocr-review'),
           onManual: () =>
               context.go('/prescriptions/${widget.prescriptionId}/manual'),
         ),
@@ -94,13 +105,17 @@ class _PrescriptionProcessingScreenState
     );
   }
 
+  void _readHandwriting() {
+    context.go('/prescriptions/${widget.prescriptionId}/ocr-review');
+  }
+
   String _label(PrescriptionProcessingStage stage) => switch (stage) {
     PrescriptionProcessingStage.checkingQuality => 'Checking image quality…',
     PrescriptionProcessingStage.preprocessing => 'Improving image readability…',
     PrescriptionProcessingStage.readingPrescription => 'Reading prescription…',
     PrescriptionProcessingStage.organizingInformation =>
-      'Organizing detected information…',
-    _ => 'Preparing secure offline review…',
+      'Separating medicine names and written fields…',
+    _ => 'Preparing prescription review…',
   };
 
   String _qualityMessage(List<CaptureQualityResult> values) {
@@ -126,27 +141,48 @@ class _ProcessingFailure extends StatelessWidget {
     required this.code,
     required this.onRetry,
     required this.onManual,
+    required this.onHandwriting,
+    required this.onRawText,
+    this.message,
   });
   final String? code;
+  final String? message;
   final VoidCallback onRetry;
   final VoidCallback onManual;
+  final VoidCallback onHandwriting;
+  final VoidCallback onRawText;
 
   @override
   Widget build(BuildContext context) {
     final noText = code == 'no_text_detected';
+    final structuringFailed = code == 'medicine_structuring_failed';
     return AppEmptyState(
       icon: noText ? Icons.text_fields_rounded : Icons.error_outline_rounded,
       title: noText
           ? 'No readable text was detected'
+          : structuringFailed
+          ? 'Medicines could not be separated'
           : 'Text recognition failed',
-      message: noText
-          ? 'Try a clearer photo, improve the crop, choose another image, or enter the medicine manually.'
-          : 'The image was kept as a draft. You can retry OCR or continue with manual entry.',
+      message:
+          message ??
+          (noText
+              ? 'Try a clearer photo, improve the crop, choose another image, or enter the medicine manually.'
+              : structuringFailed
+              ? 'The recognized text is saved. The cloud readers may be unavailable or the result could not be verified. Review the text, retry, or enter only the medicines manually.'
+              : 'The image was kept as a draft. You can retry OCR or continue with manual entry.'),
       action: Wrap(
         spacing: AppSpacing.sm,
         runSpacing: AppSpacing.sm,
         children: [
           AppPrimaryButton(label: 'Try again', onPressed: onRetry),
+          AppSecondaryButton(
+            label: 'Review extracted text',
+            onPressed: onRawText,
+          ),
+          AppSecondaryButton(
+            label: 'Improve handwriting',
+            onPressed: onHandwriting,
+          ),
           AppSecondaryButton(label: 'Enter manually', onPressed: onManual),
         ],
       ),

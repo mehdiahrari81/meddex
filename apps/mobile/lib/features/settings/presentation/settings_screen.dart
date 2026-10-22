@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/database/database_provider.dart';
 import '../../../core/localization/localization_extension.dart';
 import '../../../core/security/biometric_lock.dart';
 import '../../../app/router/app_routes.dart';
@@ -13,6 +12,11 @@ import '../../../design_system/widgets/settings_row.dart';
 import '../../../design_system/widgets/states.dart';
 import '../../../domain/models/user.dart';
 import '../application/settings_controller.dart';
+import '../application/data_management.dart';
+import '../../auth/application/auth_controller.dart';
+import 'data_deletion_dialog.dart';
+import 'server_connection_dialog.dart';
+import '../../../app/config/app_config.dart';
 import '../domain/app_settings.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -52,6 +56,21 @@ class _SettingsList extends ConsumerWidget {
         AppSpacing.xxl,
       ),
       children: [
+        if (ref.watch(appConfigProvider).environment !=
+            AppEnvironment.production)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+            child: AppCard(
+              padding: EdgeInsets.zero,
+              child: SettingsRow(
+                title: context.l10n.serverConnection,
+                subtitle: ref.watch(appConfigProvider).apiBaseUrl.toString(),
+                leading: Icons.dns_outlined,
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => showServerConnectionDialog(context, ref),
+              ),
+            ),
+          ),
         _SettingsSection(
           title: context.l10n.appearance,
           children: [
@@ -285,10 +304,7 @@ class _SettingsList extends ConsumerWidget {
               title: context.l10n.deleteAccount,
               subtitle: context.l10n.accountDeletionInfo,
               leading: Icons.person_remove_outlined,
-              onTap: () => AppOverlays.showMessage(
-                context,
-                context.l10n.accountDeletionInfo,
-              ),
+              onTap: () => _deleteAccount(context, ref),
             ),
           ],
         ),
@@ -298,10 +314,7 @@ class _SettingsList extends ConsumerWidget {
             SettingsRow(
               title: context.l10n.manageSessions,
               leading: Icons.devices_outlined,
-              onTap: () => AppOverlays.showMessage(
-                context,
-                context.l10n.notAvailableYet,
-              ),
+              onTap: () => context.push(AppRoute.sessions.path),
             ),
             _SwitchSetting(
               title: context.l10n.biometricLock,
@@ -345,17 +358,26 @@ class _SettingsList extends ConsumerWidget {
                   AppOverlays.showMessage(context, context.l10n.safetyBody),
             ),
             for (final item in [
-              (context.l10n.privacyPolicy, Icons.privacy_tip_outlined),
-              (context.l10n.terms, Icons.description_outlined),
-              (context.l10n.dataSources, Icons.source_outlined),
+              (
+                context.l10n.privacyPolicy,
+                Icons.privacy_tip_outlined,
+                AppRoute.privacyPolicy.path,
+              ),
+              (
+                context.l10n.terms,
+                Icons.description_outlined,
+                AppRoute.terms.path,
+              ),
+              (
+                context.l10n.dataSources,
+                Icons.source_outlined,
+                AppRoute.dataSources.path,
+              ),
             ])
               SettingsRow(
                 title: item.$1,
                 leading: item.$2,
-                onTap: () => AppOverlays.showMessage(
-                  context,
-                  context.l10n.notAvailableYet,
-                ),
+                onTap: () => context.push(item.$3),
               ),
             SettingsRow(
               title: context.l10n.openSourceLicenses,
@@ -381,24 +403,36 @@ class _SettingsList extends ConsumerWidget {
   }
 
   Future<void> _deleteLocalData(BuildContext context, WidgetRef ref) async {
-    final confirmed = await AppOverlays.confirm(
+    final action = ref.read(clearLocalProfileProvider);
+    final deleted = await showDataDeletionDialog(
       context,
       title: context.l10n.deleteLocalData,
       message: context.l10n.confirmDeleteLocalData,
-      confirmLabel: context.l10n.deleteLocalData,
-      cancelLabel: context.l10n.cancel,
-      destructive: true,
+      actionLabel: context.l10n.deleteLocalData,
+      onDelete: action,
     );
-    if (!confirmed) return;
-    final database = ref.read(databaseProvider);
-    await database.transaction(() async {
-      await database.delete(database.syncOperations).go();
-      await database.delete(database.appMetadata).go();
-    });
-    await ref.read(settingsRepositoryProvider).clearLocalPreferences();
-    ref.invalidate(settingsControllerProvider);
-    if (context.mounted) {
+    if (deleted && context.mounted) {
       AppOverlays.showMessage(context, context.l10n.dataDeleted);
+    }
+  }
+
+  Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
+    if (ref.read(authControllerProvider).valueOrNull?.status !=
+        AuthStatus.authenticated) {
+      await context.push(AppRoute.auth.path);
+      return;
+    }
+    final service = ref.read(accountDeletionServiceProvider);
+    final deleted = await showDataDeletionDialog(
+      context,
+      title: context.l10n.deleteAccount,
+      message: context.l10n.confirmDeleteAccount,
+      actionLabel: context.l10n.deleteAccount,
+      onDelete: service.delete,
+    );
+    if (deleted && context.mounted) {
+      context.go(AppRoute.profile.path);
+      AppOverlays.showMessage(context, context.l10n.accountDeleted);
     }
   }
 }

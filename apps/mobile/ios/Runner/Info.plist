@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>MediExplain connects to your configured medical-information server on your local network.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>MediExplain uses the camera to capture prescriptions and medicine barcodes on your device.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
@@ -17,7 +19,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Mediexplain</string>
+	<string>MediExplain</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

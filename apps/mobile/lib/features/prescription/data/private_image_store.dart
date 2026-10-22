@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as path;
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/storage/safe_path_provider.dart';
@@ -48,21 +50,43 @@ class PrivatePrescriptionImageStore implements PrescriptionImageStore {
     String sourcePath, {
     required int pageNumber,
   }) async {
-    final source = File(sourcePath);
+    var source = File(sourcePath);
     if (!await source.exists()) {
       throw const FileSystemException('Image missing');
     }
-    final extension = _safeExtension(path.extension(sourcePath));
-    final id = _uuid.v4();
-    final destination = File(
-      path.join((await _imageDirectory()).path, '$id$extension'),
-    );
-    await source.copy(destination.path);
-    return ImageReference(
-      privateId: id,
-      localPath: destination.path,
-      pageNumber: pageNumber,
-    );
+    String? normalizedPath;
+    try {
+      final extension = path.extension(sourcePath).toLowerCase();
+      if (!kIsWeb &&
+          defaultTargetPlatform == TargetPlatform.iOS &&
+          (extension == '.heic' || extension == '.heif')) {
+        normalizedPath = await const MethodChannel(
+          'mediexplain/document_capture',
+        ).invokeMethod<String>('normalizeImage', {'path': sourcePath});
+        if (normalizedPath == null) {
+          throw const FormatException('Image could not be decoded');
+        }
+        source = File(normalizedPath);
+      }
+      final id = _uuid.v4();
+      final destination = File(
+        path.join(
+          (await _imageDirectory()).path,
+          '$id${_safeExtension(path.extension(source.path))}',
+        ),
+      );
+      await source.copy(destination.path);
+      return ImageReference(
+        privateId: id,
+        localPath: destination.path,
+        pageNumber: pageNumber,
+      );
+    } finally {
+      if (normalizedPath != null) {
+        final temporary = File(normalizedPath);
+        if (await temporary.exists()) await temporary.delete();
+      }
+    }
   }
 
   @override
@@ -137,6 +161,13 @@ class PrivatePrescriptionImageStore implements PrescriptionImageStore {
       if (entity is! File) continue;
       final modified = (await entity.stat()).modified.toUtc();
       if (modified.isBefore(cutoff)) await entity.delete();
+    }
+  }
+
+  Future<void> clearTemporaryFiles() async {
+    final directory = await _temporaryDirectory();
+    await for (final entity in directory.list(followLinks: false)) {
+      await entity.delete(recursive: true);
     }
   }
 

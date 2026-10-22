@@ -1,0 +1,475 @@
+{
+  "source": "NLM RxNorm",
+  "version": "05-Oct-2026",
+  "retrieved_at": "2026-10-18T08:28:14.157272+00:00",
+  "records": [
+    {
+      "rxcui": "2675781",
+      "name": "100 ML pantoprazole 0.4 MG/ML Injection",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/2675781/properties.json"
+    },
+    {
+      "rxcui": "1014571",
+      "name": "12 HR cetirizine hydrochloride 5 MG / pseudoephedrine hydrochloride 120 MG Extended Release Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1014571/properties.json"
+    },
+    {
+      "rxcui": "1242399",
+      "name": "12 HR loratadine 5 MG / pseudoephedrine sulfate 120 MG Extended Release Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1242399/properties.json"
+    },
+    {
+      "rxcui": "1190220",
+      "name": "120 ACTUAT albuterol 0.1 MG/ACTUAT / ipratropium bromide 0.02 MG/ACTUAT Inhalation Spray",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1190220/properties.json"
+    },
+    {
+      "rxcui": "1117562",
+      "name": "24 HR loratadine 10 MG / pseudoephedrine sulfate 240 MG Extended Release Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1117562/properties.json"
+    },
+    {
+      "rxcui": "1043563",
+      "name": "24 HR metformin hydrochloride 1000 MG / saxagliptin 2.5 MG Extended Release Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1043563/properties.json"
+    },
+    {
+      "rxcui": "1043570",
+      "name": "24 HR metformin hydrochloride 1000 MG / saxagliptin 5 MG Extended Release Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1043570/properties.json"
+    },
+    {
+      "rxcui": "1043578",
+      "name": "24 HR metformin hydrochloride 500 MG / saxagliptin 5 MG Extended Release Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1043578/properties.json"
+    },
+    {
+      "rxcui": "1116320",
+      "name": "24 HR naproxen 375 MG Extended Release Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1116320/properties.json"
+    },
+    {
+      "rxcui": "2675784",
+      "name": "50 ML pantoprazole 0.8 MG/ML Injection",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/2675784/properties.json"
+    },
+    {
+      "rxcui": "161",
+      "name": "acetaminophen",
+      "tty": "IN",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/161/properties.json"
+    },
+    {
+      "rxcui": "1014599",
+      "name": "acetaminophen 300 MG / oxycodone hydrochloride 10 MG Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1014599/properties.json"
+    },
+    {
+      "rxcui": "1014615",
+      "name": "acetaminophen 300 MG / oxycodone hydrochloride 5 MG Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1014615/properties.json"
+    },
+    {
+      "rxcui": "1014632",
+      "name": "acetaminophen 300 MG / oxycodone hydrochloride 7.5 MG Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1014632/properties.json"
+    },
+    {
+      "rxcui": "435",
+      "name": "albuterol",
+      "tty": "IN",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/435/properties.json"
+    },
+    {
+      "rxcui": "104514",
+      "name": "albuterol 0.4 MG Inhalation Powder",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/104514/properties.json"
+    },
+    {
+      "rxcui": "1362214",
+      "name": "albuterol 1 MG/ML / ipratropium bromide 0.2 MG/ML Inhalation Solution",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1362214/properties.json"
+    },
+    {
+      "rxcui": "1050798",
+      "name": "aliskiren 150 MG / amlodipine 5 MG / hydrochlorothiazide 12.5 MG Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1050798/properties.json"
+    },
+    {
+      "rxcui": "1011710",
+      "name": "aliskiren 150 MG / hydrochlorothiazide 12.5 MG Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1011710/properties.json"
+    },
+    {
+      "rxcui": "1011713",
+      "name": "aliskiren 150 MG / hydrochlorothiazide 25 MG Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1011713/properties.json"
+    },
+    {
+      "rxcui": "1050803",
+      "name": "aliskiren 300 MG / amlodipine 10 MG / hydrochlorothiazide 12.5 MG Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1050803/properties.json"
+    },
+    {
+      "rxcui": "1043300",
+      "name": "alpha tocopherol 30 UNT / ascorbic acid 28 MG / cholecalciferol 400 UNT / docosahexaenoic acid 300 MG / docusate sodium 55 MG / ferrous fumarate 27 MG / folic acid 1.25 MG / pyridoxine hydrochloride 25 MG / tricalcium phosphate 160 MG Oral Capsule",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1043300/properties.json"
+    },
+    {
+      "rxcui": "17767",
+      "name": "amlodipine",
+      "tty": "IN",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/17767/properties.json"
+    },
+    {
+      "rxcui": "1000001",
+      "name": "amlodipine 5 MG / hydrochlorothiazide 25 MG / olmesartan medoxomil 40 MG Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1000001/properties.json"
+    },
+    {
+      "rxcui": "723",
+      "name": "amoxicillin",
+      "tty": "IN",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/723/properties.json"
+    },
+    {
+      "rxcui": "1810270",
+      "name": "amoxicillin 200 MG / clavulanate 50 MG Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1810270/properties.json"
+    },
+    {
+      "rxcui": "1810268",
+      "name": "amoxicillin 50 MG / clavulanate 12.5 MG Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1810268/properties.json"
+    },
+    {
+      "rxcui": "105152",
+      "name": "amoxicillin 60 MG/ML Oral Suspension",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/105152/properties.json"
+    },
+    {
+      "rxcui": "1191",
+      "name": "aspirin",
+      "tty": "IN",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1191/properties.json"
+    },
+    {
+      "rxcui": "103863",
+      "name": "aspirin 150 MG Rectal Suppository",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/103863/properties.json"
+    },
+    {
+      "rxcui": "1811632",
+      "name": "aspirin 325 MG / omeprazole 40 MG Delayed Release Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1811632/properties.json"
+    },
+    {
+      "rxcui": "103954",
+      "name": "aspirin 75 MG Delayed Release Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/103954/properties.json"
+    },
+    {
+      "rxcui": "104474",
+      "name": "aspirin 75 MG Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/104474/properties.json"
+    },
+    {
+      "rxcui": "1811631",
+      "name": "aspirin 81 MG / omeprazole 40 MG Delayed Release Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1811631/properties.json"
+    },
+    {
+      "rxcui": "83367",
+      "name": "atorvastatin",
+      "tty": "IN",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/83367/properties.json"
+    },
+    {
+      "rxcui": "1422093",
+      "name": "atorvastatin 20 MG / ezetimibe 10 MG Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1422093/properties.json"
+    },
+    {
+      "rxcui": "1422096",
+      "name": "atorvastatin 40 MG / ezetimibe 10 MG Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1422096/properties.json"
+    },
+    {
+      "rxcui": "1422099",
+      "name": "atorvastatin 80 MG / ezetimibe 10 MG Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1422099/properties.json"
+    },
+    {
+      "rxcui": "18631",
+      "name": "azithromycin",
+      "tty": "IN",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/18631/properties.json"
+    },
+    {
+      "rxcui": "141962",
+      "name": "azithromycin 250 MG Oral Capsule",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/141962/properties.json"
+    },
+    {
+      "rxcui": "141963",
+      "name": "azithromycin 40 MG/ML Oral Suspension",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/141963/properties.json"
+    },
+    {
+      "rxcui": "1668238",
+      "name": "azithromycin 500 MG Injection",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1668238/properties.json"
+    },
+    {
+      "rxcui": "20610",
+      "name": "cetirizine",
+      "tty": "IN",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/20610/properties.json"
+    },
+    {
+      "rxcui": "1011482",
+      "name": "cetirizine hydrochloride 10 MG Disintegrating Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1011482/properties.json"
+    },
+    {
+      "rxcui": "1014643",
+      "name": "cetirizine hydrochloride 5 MG Chewable Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1014643/properties.json"
+    },
+    {
+      "rxcui": "1297390",
+      "name": "chlorpheniramine maleate 2 MG / ibuprofen 200 MG / pseudoephedrine hydrochloride 30 MG Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1297390/properties.json"
+    },
+    {
+      "rxcui": "3640",
+      "name": "doxycycline",
+      "tty": "IN",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/3640/properties.json"
+    },
+    {
+      "rxcui": "1423080",
+      "name": "doxycycline hyclate 200 MG Delayed Release Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1423080/properties.json"
+    },
+    {
+      "rxcui": "1649405",
+      "name": "doxycycline hyclate 50 MG Oral Capsule",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1649405/properties.json"
+    },
+    {
+      "rxcui": "1649401",
+      "name": "doxycycline monohydrate 50 MG Oral Capsule",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1649401/properties.json"
+    },
+    {
+      "rxcui": "1100066",
+      "name": "famotidine 26.6 MG / ibuprofen 800 MG Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1100066/properties.json"
+    },
+    {
+      "rxcui": "105664",
+      "name": "ferrous fumarate 305 MG / folic acid 0.35 MG Oral Capsule",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/105664/properties.json"
+    },
+    {
+      "rxcui": "24947",
+      "name": "ferrous sulfate",
+      "tty": "IN",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/24947/properties.json"
+    },
+    {
+      "rxcui": "102988",
+      "name": "ferrous sulfate 116 MG/ML Oral Solution",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/102988/properties.json"
+    },
+    {
+      "rxcui": "1095421",
+      "name": "ferrous sulfate 140 MG Extended Release Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1095421/properties.json"
+    },
+    {
+      "rxcui": "105659",
+      "name": "ferrous sulfate 150 MG / folic acid 0.5 MG Extended Release Oral Capsule",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/105659/properties.json"
+    },
+    {
+      "rxcui": "4511",
+      "name": "folic acid",
+      "tty": "IN",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/4511/properties.json"
+    },
+    {
+      "rxcui": "5487",
+      "name": "hydrochlorothiazide",
+      "tty": "IN",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/5487/properties.json"
+    },
+    {
+      "rxcui": "979464",
+      "name": "hydrochlorothiazide 12.5 MG / losartan potassium 100 MG Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/979464/properties.json"
+    },
+    {
+      "rxcui": "979468",
+      "name": "hydrochlorothiazide 12.5 MG / losartan potassium 50 MG Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/979468/properties.json"
+    },
+    {
+      "rxcui": "5640",
+      "name": "ibuprofen",
+      "tty": "IN",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/5640/properties.json"
+    },
+    {
+      "rxcui": "1049589",
+      "name": "ibuprofen 400 MG / oxycodone hydrochloride 5 MG Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1049589/properties.json"
+    },
+    {
+      "rxcui": "10582",
+      "name": "levothyroxine",
+      "tty": "IN",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/10582/properties.json"
+    },
+    {
+      "rxcui": "1423483",
+      "name": "levothyroxine sodium 0.0022 MG/MG Oral Powder",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1423483/properties.json"
+    },
+    {
+      "rxcui": "1115267",
+      "name": "levothyroxine sodium 0.1 MG Injection",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1115267/properties.json"
+    },
+    {
+      "rxcui": "1115269",
+      "name": "levothyroxine sodium 0.2 MG Injection",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1115269/properties.json"
+    },
+    {
+      "rxcui": "28889",
+      "name": "loratadine",
+      "tty": "IN",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/28889/properties.json"
+    },
+    {
+      "rxcui": "2265266",
+      "name": "loratadine 10 MG Chewable Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/2265266/properties.json"
+    },
+    {
+      "rxcui": "52175",
+      "name": "losartan",
+      "tty": "IN",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/52175/properties.json"
+    },
+    {
+      "rxcui": "2709039",
+      "name": "losartan potassium 10 MG/ML Oral Suspension",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/2709039/properties.json"
+    },
+    {
+      "rxcui": "6809",
+      "name": "metformin",
+      "tty": "IN",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/6809/properties.json"
+    },
+    {
+      "rxcui": "7258",
+      "name": "naproxen",
+      "tty": "IN",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/7258/properties.json"
+    },
+    {
+      "rxcui": "105918",
+      "name": "naproxen 250 MG Delayed Release Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/105918/properties.json"
+    },
+    {
+      "rxcui": "1112231",
+      "name": "naproxen sodium 220 MG Oral Capsule",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/1112231/properties.json"
+    },
+    {
+      "rxcui": "7646",
+      "name": "omeprazole",
+      "tty": "IN",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/7646/properties.json"
+    },
+    {
+      "rxcui": "198051",
+      "name": "omeprazole 20 MG Delayed Release Oral Capsule",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/198051/properties.json"
+    },
+    {
+      "rxcui": "40790",
+      "name": "pantoprazole",
+      "tty": "IN",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/40790/properties.json"
+    },
+    {
+      "rxcui": "251872",
+      "name": "pantoprazole 20 MG Delayed Release Oral Tablet",
+      "tty": "SCD",
+      "source_url": "https://rxnav.nlm.nih.gov/REST/rxcui/251872/properties.json"
+    }
+  ]
+}

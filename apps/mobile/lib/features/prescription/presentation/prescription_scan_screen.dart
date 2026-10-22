@@ -9,14 +9,35 @@ import '../../../design_system/widgets/cards.dart';
 import '../../../design_system/widgets/states.dart';
 import '../application/prescription_providers.dart';
 import '../application/prescription_workflow_controller.dart';
+import 'delete_prescription.dart';
+import '../domain/prescription_models.dart';
 
-class PrescriptionScanScreen extends ConsumerWidget {
+class PrescriptionScanScreen extends ConsumerStatefulWidget {
   const PrescriptionScanScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PrescriptionScanScreen> createState() =>
+      _PrescriptionScanScreenState();
+}
+
+class _PrescriptionScanScreenState
+    extends ConsumerState<PrescriptionScanScreen> {
+  DateTime? _deletedCaptureDate;
+
+  @override
+  Widget build(BuildContext context) {
     final workflow = ref.watch(prescriptionWorkflowControllerProvider);
     final draft = ref.watch(latestPrescriptionDraftProvider);
+    final unfinishedCount = ref
+        .watch(prescriptionHistoryProvider)
+        .valueOrNull
+        ?.where(
+          (entry) =>
+              entry.pipelineState != PrescriptionPipelineState.userConfirmed &&
+              entry.pipelineState !=
+                  PrescriptionPipelineState.readyForMedicationLookup,
+        )
+        .length;
     final busy =
         workflow.stage != PrescriptionProcessingStage.idle &&
         workflow.stage != PrescriptionProcessingStage.failed &&
@@ -42,45 +63,126 @@ class PrescriptionScanScreen extends ConsumerWidget {
         children: [
           const AppBanner(
             message:
-                'OCR may suggest text. Compare every medicine name and number with the prescription before confirming.',
+                'Selected prescription images are read through your app server by Google Gemini, with Groq as fallback. Compare every medicine name and number before confirming.',
             icon: Icons.health_and_safety_outlined,
           ),
           const SizedBox(height: AppSpacing.lg),
-          draft.when(
-            loading: () => const AppSkeleton(height: 74),
-            error: (_, _) => const SizedBox.shrink(),
-            data: (value) => value == null
-                ? const SizedBox.shrink()
-                : Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-                    child: AppCard(
-                      semanticLabel: 'Continue reviewing prescription',
-                      onTap: () =>
-                          context.push('/prescriptions/${value.id}/review'),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.restore_page_outlined),
-                          SizedBox(width: AppSpacing.sm),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Continue reviewing prescription',
-                                  style: TextStyle(fontWeight: FontWeight.w700),
-                                ),
-                                Text(
-                                  'Your field corrections were saved offline.',
-                                ),
-                              ],
+          if (_deletedCaptureDate != null) ...[
+            AppBanner(
+              message:
+                  'Deleted prescription from ${prescriptionCaptureLabel(_deletedCaptureDate!)}.',
+              icon: Icons.check_circle_outline_rounded,
+            ),
+            if (unfinishedCount != null && unfinishedCount > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.sm),
+                child: AppSecondaryButton(
+                  label: 'Review remaining prescriptions ($unfinishedCount)',
+                  icon: Icons.history_rounded,
+                  expand: true,
+                  onPressed: () async {
+                    await context.push(
+                      '${AppRoute.prescriptionHistory.path}?drafts=true',
+                    );
+                    if (mounted) setState(() => _deletedCaptureDate = null);
+                  },
+                ),
+              ),
+            const SizedBox(height: AppSpacing.lg),
+          ] else
+            draft.when(
+              loading: () => const AppSkeleton(height: 74),
+              error: (_, _) => const SizedBox.shrink(),
+              data: (value) => value == null
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+                      child: AppCard(
+                        key: ValueKey('resume-${value.id}'),
+                        semanticLabel: 'Continue reviewing prescription',
+                        onTap: () => context.push(switch (value.pipelineState) {
+                          PrescriptionPipelineState.rawCapture =>
+                            '/prescriptions/${value.id}/preview',
+                          PrescriptionPipelineState.preprocessedImage ||
+                          PrescriptionPipelineState.ocrResult ||
+                          PrescriptionPipelineState.parsedCandidates =>
+                            '/prescriptions/${value.id}/processing',
+                          _ => '/prescriptions/${value.id}/review',
+                        }),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.restore_page_outlined),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Continue reviewing prescription',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  Text(
+                                    prescriptionCaptureLabel(value.captureDate),
+                                  ),
+                                  Text(
+                                    value.items.isEmpty
+                                        ? 'Scan awaiting medicine review'
+                                        : value.items
+                                              .map(
+                                                (item) => item
+                                                    .field(
+                                                      PrescriptionFieldType
+                                                          .medicationName,
+                                                    )
+                                                    .currentValue,
+                                              )
+                                              .whereType<String>()
+                                              .where(
+                                                (name) =>
+                                                    name.trim().isNotEmpty,
+                                              )
+                                              .take(3)
+                                              .join(', '),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (unfinishedCount != null &&
+                                      unfinishedCount > 1)
+                                    Text(
+                                      '$unfinishedCount unfinished prescriptions',
+                                    ),
+                                ],
+                              ),
                             ),
-                          ),
-                          Icon(Icons.chevron_right_rounded),
-                        ],
+                            IconButton(
+                              tooltip: 'Delete prescription draft',
+                              onPressed: busy
+                                  ? null
+                                  : () async {
+                                      final deleted =
+                                          await deletePrescriptionWithConfirmation(
+                                            context,
+                                            ref,
+                                            value.id,
+                                            capturedAt: value.captureDate,
+                                          );
+                                      if (deleted && mounted) {
+                                        setState(
+                                          () => _deletedCaptureDate =
+                                              value.captureDate,
+                                        );
+                                      }
+                                    },
+                              icon: const Icon(Icons.delete_outline_rounded),
+                            ),
+                            const Icon(Icons.chevron_right_rounded),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-          ),
+            ),
           Text(
             'Choose a capture method',
             style: Theme.of(context).textTheme.headlineSmall,
@@ -98,7 +200,10 @@ class PrescriptionScanScreen extends ConsumerWidget {
                 'Rear camera with framing, focus, torch, preview, crop and rotate.',
             onTap: busy
                 ? null
-                : () => context.push(AppRoute.prescriptionCamera.path),
+                : () {
+                    setState(() => _deletedCaptureDate = null);
+                    context.push(AppRoute.prescriptionCamera.path);
+                  },
           ),
           const SizedBox(height: AppSpacing.sm),
           _CaptureChoice(
@@ -109,6 +214,7 @@ class PrescriptionScanScreen extends ConsumerWidget {
             onTap: busy
                 ? null
                 : () async {
+                    setState(() => _deletedCaptureDate = null);
                     final id = await ref
                         .read(prescriptionWorkflowControllerProvider.notifier)
                         .scanDocument();
@@ -125,6 +231,7 @@ class PrescriptionScanScreen extends ConsumerWidget {
             onTap: busy
                 ? null
                 : () async {
+                    setState(() => _deletedCaptureDate = null);
                     final id = await ref
                         .read(prescriptionWorkflowControllerProvider.notifier)
                         .importGallery();
@@ -142,6 +249,7 @@ class PrescriptionScanScreen extends ConsumerWidget {
             onTap: busy
                 ? null
                 : () async {
+                    setState(() => _deletedCaptureDate = null);
                     final id = await ref
                         .read(prescriptionWorkflowControllerProvider.notifier)
                         .importFiles();
@@ -158,6 +266,7 @@ class PrescriptionScanScreen extends ConsumerWidget {
             onPressed: busy
                 ? null
                 : () async {
+                    setState(() => _deletedCaptureDate = null);
                     final id = await ref
                         .read(prescriptionWorkflowControllerProvider.notifier)
                         .createManual();

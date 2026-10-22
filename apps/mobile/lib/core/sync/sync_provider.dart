@@ -15,14 +15,15 @@ final syncTransportProvider = Provider<SyncTransport>((ref) {
       ?.userId;
   final syncEnabled =
       ref.watch(settingsControllerProvider).valueOrNull?.syncEnabled ?? false;
-  if (ownerId == null || !syncEnabled) return const DisabledSyncTransport();
+  if (ownerId == null) return const DisabledSyncTransport();
   final api = ApiClient(
     baseUrl: ref.watch(appConfigProvider).apiBaseUrl,
     sessionManager: ref.watch(sessionManagerProvider),
     expectedUserId: ownerId,
   );
   ref.onDispose(() => api.dio.close(force: true));
-  return ApiSyncTransport(api);
+  final transport = ApiSyncTransport(api);
+  return syncEnabled ? transport : DeletionOnlySyncTransport(transport);
 });
 
 final syncCoordinatorProvider = Provider<SyncCoordinator>((ref) {

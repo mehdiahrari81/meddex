@@ -51,8 +51,8 @@ class MedicationPlanUpsert(StrictSchema):
     display_name: str = Field(min_length=1, max_length=300)
     strength: str | None = Field(default=None, max_length=100)
     dosage_form: str | None = Field(default=None, max_length=100)
-    confirmed_dose_text: str = Field(min_length=1, max_length=500)
-    confirmed_frequency: str = Field(min_length=1, max_length=500)
+    confirmed_dose_text: str = Field(max_length=500)
+    confirmed_frequency: str = Field(max_length=500)
     confirmed_duration: str | None = Field(default=None, max_length=500)
     raw_prescription_instruction: str | None = Field(default=None, max_length=4000)
     confirmed_instruction: str = Field(min_length=1, max_length=4000)
@@ -67,8 +67,10 @@ class MedicationPlanUpsert(StrictSchema):
 
     @model_validator(mode="after")
     def source_has_confirmation(self) -> "MedicationPlanUpsert":
-        if self.source_type == "confirmedPrescription" and not self.prescription_item_id:
-            raise ValueError("prescription-derived plan requires prescription item")
+        if self.active and (
+            not self.confirmed_dose_text.strip() or not self.confirmed_frequency.strip()
+        ):
+            raise ValueError("Active reminders require confirmed dose and frequency")
         if self.end_date is not None and self.end_date < self.start_date:
             raise ValueError("end date cannot precede start date")
         return self

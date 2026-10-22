@@ -56,6 +56,9 @@ void main() {
       );
       final ocr = await const _SyntheticOcrProvider().recognize(captured);
       await repository.storeOcr(draft.prescription.id, [ocr]);
+      final restoredOcr = await repository.ocrResults(draft.prescription.id);
+      expect(restoredOcr.single.fullText, ocr.fullText);
+      expect(restoredOcr.single.pageNumber, 1);
       final parsed = await _parser.parse(
         prescriptionId: draft.prescription.id,
         rawText: ocr.fullText,

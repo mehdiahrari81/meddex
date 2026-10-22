@@ -28,7 +28,7 @@ class ProviderCache:
         provider_version: str,
         operation: str,
         arguments: dict[str, str],
-        ttl: timedelta,
+        ttl: timedelta | Callable[[dict[str, object]], timedelta],
         loader: Callable[[], dict[str, object]],
     ) -> CachedValue:
         cache_key = self.key(provider, operation, arguments)
@@ -69,7 +69,7 @@ class ProviderCache:
         existing.payload = payload
         existing.content_hash = content_hash
         existing.fetched_at = now
-        existing.expires_at = now + ttl
+        existing.expires_at = now + (ttl(payload) if callable(ttl) else ttl)
         existing.last_refresh_attempt_at = now
         existing.refresh_error_code = None
         self.db.commit()

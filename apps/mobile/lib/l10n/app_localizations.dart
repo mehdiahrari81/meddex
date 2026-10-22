@@ -971,7 +971,7 @@ abstract class AppLocalizations {
   /// No description provided for @confirmDeleteLocalData.
   ///
   /// In en, this message translates to:
-  /// **'Delete local MediExplain data and reset onboarding? This cannot be undone.'**
+  /// **'Delete this profile’s prescriptions, images, medications, dose history, bookmarks, and learning progress from this device, and reset app preferences? This cannot be undone. Your account, existing cloud backups, reference lessons, and other profiles stay available. Unsynced uploads are discarded; existing cloud-deletion requests are kept for retry.'**
   String get confirmDeleteLocalData;
 
   /// No description provided for @deleteLocalData.
@@ -1879,6 +1879,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Common terms'**
   String get commonTerms;
+
+  /// No description provided for @authEmailExists.
+  ///
+  /// In en, this message translates to:
+  /// **'An account with this email already exists. Sign in or reset your password.'**
+  String get authEmailExists;
+
+  /// No description provided for @authInvalidCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'The email or password is incorrect.'**
+  String get authInvalidCredentials;
+
+  /// No description provided for @authConnectionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot reach the server. Check your connection and try again.'**
+  String get authConnectionFailed;
+
+  /// No description provided for @authRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Please wait a minute and try again.'**
+  String get authRateLimited;
+
+  /// No description provided for @confirmDeleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Permanently delete your signed-in account and its server records, revoke every session, and remove this profile’s local records, prescription images, and reminders? This cannot be undone and requires a connection to the server. Other profiles on this device are not deleted.'**
+  String get confirmDeleteAccount;
+
+  /// No description provided for @accountDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account and this profile’s local data were deleted.'**
+  String get accountDeleted;
+
+  /// No description provided for @dataDeletionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Deletion could not finish. Check your connection or device storage and try again. Completion has not been confirmed.'**
+  String get dataDeletionFailed;
+
+  /// No description provided for @privacyPolicyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your data on this device\nMediExplain stores prescriptions, private scan images, medication plans, dose history, bookmarks, and learning progress in the app’s local storage. Signed-in profiles use separate local databases. Session credentials use platform secure storage.\n\nServer and AI processing\nSigning in sends account information to your configured server. Account synchronization uploads supported records when enabled. Pending medication deletions may still be sent when backup uploads are off. Choosing a prescription image for recognition sends that image to the server and Google Gemini or Groq. Medicine explanations and assistant questions can also be processed by Gemini or Groq, or by Ollama on the computer hosting your backend when fallback is available. Images are not sent to the text-only Ollama model. Avoid including unnecessary identifying details. Provider processing is subject to that provider’s policies.\n\nYour controls\nManage saved data removes this profile’s local records, images, and reminders and resets app preferences; it does not delete your account or existing cloud backups. Existing cloud-deletion requests are retained. Delete account requires an authenticated server connection and also clears this profile locally after server confirmation. Other signed-in devices may retain their own local copies until those devices are cleared. You can separately remove individual medications or prescription scans. Turning off notifications cancels app reminders without deleting your dose history.\n\nRetention and limits\nPrescription images can be removed automatically after confirmation using the image-retention setting. Already shared files and copies outside the app cannot be withdrawn. This local development setup depends on the configured backend and its operator’s storage and access controls. App analytics are not sent by the current no-op analytics implementation.'**
+  String get privacyPolicyBody;
+
+  /// No description provided for @termsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Using MediExplain\nMediExplain helps you understand medical words, prescriptions, and general medicine information. It does not diagnose conditions, prescribe treatment, or replace a pharmacist or clinician.\n\nCheck recognized information\nHandwriting recognition and AI explanations can be incomplete or wrong. Compare each medicine name, strength, form, dose, and frequency with the original prescription or medicine label. Ask a pharmacist or prescriber to clarify anything uncertain. Do not change treatment based only on an app result.\n\nReminders and availability\nReminders record the instructions you reviewed; they do not establish which treatment is appropriate. Device permissions, notification limits, battery settings, and connectivity can affect reminders and cloud features. Keep another way to track time-sensitive medication. Cloud recognition depends on provider availability and quota.\n\nYour records\nOnly upload images and information you are entitled to use. Protect your device and account. Review the Privacy policy and the deletion confirmation before removing data. These in-app use guidelines describe the current build; they do not claim regulatory approval or clinical validation.'**
+  String get termsBody;
+
+  /// No description provided for @dataSourcesBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Medicine references\nMedicine identity and ingredient relationships use available NLM RxNorm references. Patient information can use MedlinePlus and DailyMed label material. Source coverage varies by medicine and country. A reference for an ingredient does not confirm a prescribed product, dose, or release type.\n\nLearning content\nThe bundled development catalogue contains 30 lessons, 60 flashcards, four quiz questions, and medical terminology. It includes original development summaries with attributed source references. It is not a clinically approved production catalogue. Each term’s Source information shows its own provenance and review details.\n\nAI and image recognition\nGemini reads selected prescription images and separates medicine fields, with Groq as cloud fallback. The assistant uses Gemini first, then Groq, then qwen3:1.7b through Ollama as its text fallback. Apple Vision, Android ML Kit, and an optional server handwriting recognizer support other recognition tools. AI models are processing tools, not medical reference sources. Explanations must retain source attribution.\n\nReview the source\nMedicine explanations include their actual source references. A failed lookup or an ambiguous name should be corrected or checked with a pharmacist; the app must not invent the missing information.'**
+  String get dataSourcesBody;
+
+  /// No description provided for @sourceWebsite.
+  ///
+  /// In en, this message translates to:
+  /// **'Reference website'**
+  String get sourceWebsite;
+
+  /// No description provided for @serverConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Server connection'**
+  String get serverConnection;
+
+  /// No description provided for @serverAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Server address'**
+  String get serverAddress;
+
+  /// No description provided for @testAndSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Test and save'**
+  String get testAndSave;
+
+  /// No description provided for @serverConnectionSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Server connection updated. You can retry your saved scan.'**
+  String get serverConnectionSaved;
+
+  /// No description provided for @serverAddressInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a private LAN HTTP address or HTTPS server URL ending with /api/v1/, without a username, password or query.'**
+  String get serverAddressInvalid;
+
+  /// No description provided for @serverConnectionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not verify the server or save the address. Keep the Mac and phone on the same Wi-Fi, keep the API running, and allow Local Network access.'**
+  String get serverConnectionFailed;
+
+  /// No description provided for @serverConnectionHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic connection follows your Mac’s address on the same Wi-Fi. For a different trusted server, turn automatic connection off and enter its address. Testing sends no login or prescription.'**
+  String get serverConnectionHelp;
+
+  /// No description provided for @automaticServerConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Find my Mac automatically'**
+  String get automaticServerConnection;
+
+  /// No description provided for @automaticServerConnectionHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect using the Mac’s name when both devices change Wi-Fi.'**
+  String get automaticServerConnectionHelp;
+
+  /// No description provided for @learningSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress could not be saved. Try again.'**
+  String get learningSaveFailed;
+
+  /// No description provided for @learningLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'This lesson could not be loaded. Try again.'**
+  String get learningLoadFailed;
+
+  /// No description provided for @speechUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio could not be played on this device. Try again.'**
+  String get speechUnavailable;
 }
 
 class _AppLocalizationsDelegate

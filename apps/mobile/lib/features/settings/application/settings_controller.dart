@@ -50,4 +50,18 @@ class SettingsController extends AsyncNotifier<AppSettings> {
 
   Future<void> setTheme(AppThemePreference value) =>
       persist((current) => current.copyWith(theme: value));
+
+  Future<void> setDevelopmentServerUrl(
+    String url, {
+    bool automatic = false,
+  }) async {
+    final current = state.valueOrNull ?? await _repository.load();
+    final updated = current.copyWith(
+      developmentServerUrl: url,
+      automaticServerConnection: automatic,
+    );
+    // Publish a different server only after the address has been saved.
+    await _repository.save(updated);
+    state = AsyncData(updated);
+  }
 }

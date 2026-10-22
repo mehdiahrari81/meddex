@@ -52,6 +52,7 @@ def current_identity(
     auth_session = SessionRepository(db).by_id(claims.session_id)
     if (
         auth_session is None
+        or auth_session.audience != "mediexplain-mobile"
         or auth_session.user_id != claims.user_id
         or auth_session.revoked_at is not None
         or ensure_utc(auth_session.expires_at) <= utc_now()

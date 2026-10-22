@@ -27,6 +27,7 @@ class MedicationSearchScreen extends ConsumerStatefulWidget {
     this.initialForm,
     this.autoSearch = false,
     this.prescriptionItemId,
+    this.explainAfterConfirm = false,
     super.key,
   });
   final String? initialQuery;
@@ -34,6 +35,7 @@ class MedicationSearchScreen extends ConsumerStatefulWidget {
   final String? initialForm;
   final bool autoSearch;
   final String? prescriptionItemId;
+  final bool explainAfterConfirm;
 
   @override
   ConsumerState<MedicationSearchScreen> createState() =>
@@ -161,15 +163,23 @@ class _MedicationSearchScreenState
             message:
                 'Trusted medicine search is unavailable. No identity was inferred.',
           ),
-        if (_resolution != null) _ResolutionResults(resolution: _resolution!),
+        if (_resolution != null)
+          _ResolutionResults(
+            resolution: _resolution!,
+            explainAfterConfirm: widget.explainAfterConfirm,
+          ),
       ],
     ),
   );
 }
 
 class _ResolutionResults extends ConsumerStatefulWidget {
-  const _ResolutionResults({required this.resolution});
+  const _ResolutionResults({
+    required this.resolution,
+    this.explainAfterConfirm = false,
+  });
   final MedicationResolution resolution;
+  final bool explainAfterConfirm;
 
   @override
   ConsumerState<_ResolutionResults> createState() => _ResolutionResultsState();
@@ -273,7 +283,9 @@ class _ResolutionResultsState extends ConsumerState<_ResolutionResults> {
                                   .confirm(resolution.id, candidate.id);
                               if (context.mounted) {
                                 context.push(
-                                  '/medicine-information/${value.id}',
+                                  widget.explainAfterConfirm
+                                      ? '/medicine-information/${value.id}/assistant?intro=true'
+                                      : '/medicine-information/${value.id}',
                                 );
                               }
                             } on Object {
@@ -550,8 +562,13 @@ class MedicationSourceScreen extends StatelessWidget {
 }
 
 class MedicationAssistantScreen extends ConsumerStatefulWidget {
-  const MedicationAssistantScreen({required this.medicationId, super.key});
+  const MedicationAssistantScreen({
+    required this.medicationId,
+    this.initialQuestion,
+    super.key,
+  });
   final String medicationId;
+  final String? initialQuestion;
 
   @override
   ConsumerState<MedicationAssistantScreen> createState() =>
@@ -576,6 +593,11 @@ class _MedicationAssistantScreenState
     _repository = ref.read(medicationIntelligenceRepositoryProvider);
     _speech = ref.read(textToSpeechProvider);
     _voice = ref.read(voiceInputProvider);
+    if (widget.initialQuestion != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_ask(widget.initialQuestion));
+      });
+    }
   }
 
   @override
@@ -733,7 +755,7 @@ class _MedicationAssistantScreenState
       children: [
         const AppBanner(
           message:
-              'Answers use referenced sources. AI explanations and original source extracts are labeled separately. This assistant cannot diagnose, prescribe, or change doses.',
+              'Questions and referenced medicine information may be sent to Google Gemini, with local Ollama as fallback. Avoid personal identifiers. AI explanations and original source extracts are labeled separately. This assistant cannot diagnose, prescribe, or change doses.',
           icon: Icons.shield_outlined,
         ),
         Expanded(

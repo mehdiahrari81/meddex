@@ -104,6 +104,58 @@ void main() {
     expect(operations.single.payload, isNot(contains('image')));
   });
 
+  test(
+    'AI retry from stored OCR advances review and protects individually confirmed fields',
+    () async {
+      final draft = await repository.createManualDraft();
+      await database.customStatement(
+        'UPDATE prescriptions SET pipeline_state = ? WHERE id = ?',
+        [PrescriptionPipelineState.ocrResult.name, draft.prescription.id],
+      );
+      final item = _manualItem(draft.prescription.id, now);
+      await repository.replaceParsedItemsFromCorrectedText(
+        draft.prescription.id,
+        'Synthetic QA OCR text',
+        [item],
+        parserVersion: 'gemini-text-v1:qa',
+      );
+      final restored = await repository.get(draft.prescription.id);
+      expect(
+        restored!.pipelineState,
+        PrescriptionPipelineState.userReviewRequired,
+      );
+      expect(restored.parserVersion, 'gemini-text-v1:qa');
+      await repository.confirmField(
+        draft.prescription.id,
+        item.id,
+        PrescriptionFieldType.medicationName,
+      );
+      await expectLater(
+        repository.replaceParsedItemsFromCorrectedText(
+          draft.prescription.id,
+          'replacement',
+          [],
+        ),
+        throwsStateError,
+      );
+      await repository.setItemState(
+        draft.prescription.id,
+        item.id,
+        PrescriptionItemState.confirmedByUser,
+      );
+      await repository.setItemState(
+        draft.prescription.id,
+        item.id,
+        PrescriptionItemState.readyForLookup,
+      );
+      await repository.confirmPrescription(draft.prescription.id);
+      expect(
+        (await repository.get(draft.prescription.id))!.pipelineState,
+        PrescriptionPipelineState.readyForMedicationLookup,
+      );
+    },
+  );
+
   test('image-only deletion clears private files but retains fields', () async {
     final tempDirectory = await Directory.systemTemp.createTemp(
       'mediexplain-prescription-test-',

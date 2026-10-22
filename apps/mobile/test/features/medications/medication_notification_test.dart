@@ -89,6 +89,32 @@ void main() {
     },
   );
 
+  test('completed doses are not scheduled again after a restart', () async {
+    final details = await createPlan();
+    final service = MedicationReminderService(
+      repository: repository,
+      scheduler: MedicationNotificationScheduler(
+        adapter,
+        _Permissions(NotificationPermissionState.granted),
+      ),
+    );
+    final scheduled = DateTime.utc(2026, 8, 13, 8);
+    final logicalId = '${details.plan.id}:${scheduled.toIso8601String()}';
+    await repository.recordDose(
+      planId: details.plan.id,
+      logicalDoseId: logicalId,
+      scheduledAt: scheduled,
+      action: DoseAction.skipped,
+      source: DoseEventSource.app,
+    );
+    await service.rebuild(plans: [details], now: now);
+    expect(
+      adapter.scheduled.any((reminder) => reminder.logicalDoseId == logicalId),
+      isFalse,
+    );
+    expect(adapter.scheduled, isNotEmpty);
+  });
+
   test(
     'tap does not log; taken and skip actions are explicit and idempotent',
     () async {

@@ -28,6 +28,8 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         structlog.contextvars.bind_contextvars(request_id=request_id)
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
+        if "/auth" in request.url.path or "/prescription-ocr" in request.url.path:
+            response.headers["Cache-Control"] = "no-store"
         return response
 
 
@@ -147,6 +149,7 @@ class AuthenticationRateLimitMiddleware(BaseHTTPMiddleware):
             f"{api_prefix}/medication-intelligence/ai",
             f"{api_prefix}/medication-intelligence/reports",
             f"{api_prefix}/admin/imports",
+            f"{api_prefix}/prescription-ocr",
         )
 
     async def dispatch(
@@ -156,7 +159,9 @@ class AuthenticationRateLimitMiddleware(BaseHTTPMiddleware):
             client = request.client.host if request.client else "unknown"
             authorization = request.headers.get("Authorization", "")
             identity_key = (
-                hashlib.sha256(authorization.encode()).hexdigest()[:16] if authorization else client
+                hashlib.sha256(authorization.encode()).hexdigest()[:16]
+                if authorization and "/auth" not in request.url.path
+                else client
             )
             allowed, retry_after = self.limiter.allow(f"{identity_key}:{request.url.path}")
             if not allowed:

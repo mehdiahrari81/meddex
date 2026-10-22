@@ -15,11 +15,21 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.core.security import hash_password, verify_password
 from app.db.session import create_database_engine
-from app.models import AdminMembership, AdminRole, ContentVersion, User, UserProfile
+from app.models import (
+    AdminMembership,
+    AdminRole,
+    AdminRolePermission,
+    AuditEvent,
+    ContentVersion,
+    FeatureFlag,
+    User,
+    UserProfile,
+)
 from app.schemas.auth import RegisterRequest
 from app.services.admin_auth import AdminAuthService
 from app.services.content_import import ContentImporter
 from app.services.demo_data import seed_demo_data
+from app.services.medication_reference import import_medication_reference
 
 
 def provision_admin(
@@ -82,6 +92,13 @@ def main() -> None:
     )
     reference.add_argument("--path", type=Path, required=True)
     reference.add_argument("--if-empty", action="store_true", help="Seed only a fresh database")
+    reference.add_argument(
+        "--additive", action="store_true", help="Preserve existing learning records"
+    )
+    medicine = commands.add_parser(
+        "import-medications", help="Install an attributed RxNorm snapshot"
+    )
+    medicine.add_argument("--path", type=Path, required=True)
     demo = commands.add_parser("seed-demo", help="Add labeled FYP demonstration data locally")
     demo.add_argument("--actor-email", required=True, help="Existing active administrator")
     demo.add_argument("--path", type=Path, required=True, help="Bundled development dataset")
@@ -90,8 +107,104 @@ def main() -> None:
     admin.add_argument("--name", required=True)
     admin.add_argument("--role", default="SUPER_ADMIN")
     admin.add_argument("--mfa", action="store_true", help="Enroll and verify an authenticator")
+    commands.add_parser(
+        "enable-ai", help="Enable the configured AI assistant with an operator audit event"
+    )
+    register = commands.add_parser(
+        "register-reference-content", help="Register installed content in the editorial catalogue"
+    )
+    register.add_argument("--actor-email", required=True)
     args = parser.parse_args()
     settings = Settings()
+    if args.command == "register-reference-content":
+        from app.services.reference_publication import ReferencePublicationService
+
+        engine = create_database_engine(settings)
+        try:
+            with Session(engine) as db:
+                actor = db.scalar(
+                    select(User)
+                    .join(AdminMembership, AdminMembership.user_id == User.id)
+                    .where(
+                        User.email == args.actor_email.strip().lower(),
+                        AdminMembership.active.is_(True),
+                    )
+                )
+                if actor is None:
+                    parser.error("An existing active administrator is required.")
+                permissions = list(
+                    db.scalars(
+                        select(AdminRolePermission.permission_code)
+                        .join(
+                            AdminMembership, AdminMembership.role_id == AdminRolePermission.role_id
+                        )
+                        .where(AdminMembership.user_id == actor.id)
+                    )
+                )
+                if not {"content.edit", "content.publish"}.issubset(permissions):
+                    parser.error(
+                        "Reference registration requires content.edit and content.publish."
+                    )
+                count = ReferencePublicationService(db).register_existing(actor.id)
+                db.add(
+                    AuditEvent(
+                        actor_id=actor.id,
+                        permission_context=permissions,
+                        action="content.register_existing",
+                        target_type="reference_catalogue",
+                        target_id="reference.mobile",
+                        request_id="operator-registration",
+                        safe_metadata={"registered": count},
+                    )
+                )
+                db.commit()
+                print(
+                    f"Registered {count} existing reference records; "
+                    "source attribution and user data preserved."
+                )
+        finally:
+            engine.dispose()
+        return
+    if args.command == "enable-ai":
+        if settings.ai_provider == "disabled":
+            parser.error("Configure an AI provider before enabling the assistant.")
+        engine = create_database_engine(settings)
+        try:
+            with Session(engine) as db:
+                flag = db.get(FeatureFlag, "ai_assistant")
+                if flag is None:
+                    parser.error("Apply migrations first.")
+                if not flag.enabled:
+                    flag.enabled = True
+                    flag.revision += 1
+                    db.add(
+                        AuditEvent(
+                            actor_id=None,
+                            action="feature_flag.enable",
+                            target_type="feature_flag",
+                            target_id="ai_assistant",
+                            request_id="operator-cli",
+                            permission_context=["operator.cli"],
+                            safe_metadata={
+                                "provider": settings.ai_provider,
+                                "revision": flag.revision,
+                            },
+                        )
+                    )
+                    db.commit()
+                print("AI assistant enabled. Medical source and safety checks remain active.")
+        finally:
+            engine.dispose()
+        return
+    if args.command == "import-medications":
+        engine = create_database_engine(settings)
+        try:
+            with Session(engine) as db:
+                result = import_medication_reference(db, args.path)
+                print(json.dumps(result, sort_keys=True))
+        finally:
+            engine.dispose()
+        return
     if args.command == "seed-demo":
         if settings.environment not in {"development", "testing"}:
             parser.error("Demo data is restricted to development and testing.")
@@ -113,14 +226,18 @@ def main() -> None:
         engine = create_database_engine(settings)
         try:
             with Session(engine) as db:
-                if args.if_empty and db.scalar(select(ContentVersion).limit(1)) is not None:
+                if (
+                    args.if_empty
+                    and db.get(ContentVersion, json.loads(args.path.read_text())["dataset_name"])
+                    is not None
+                ):
                     print("Existing reference release preserved.")
                     return
                 importer = ContentImporter(db)
-                report = importer.import_path(args.path, dry_run=True)
+                report = importer.import_path(args.path, dry_run=True, additive=args.additive)
                 if settings.environment == "production" and not report.production_approved:
                     parser.error("Production requires an approved reference dataset.")
-                report = importer.import_path(args.path)
+                report = importer.import_path(args.path, additive=args.additive)
                 print(
                     f"Reference {report.dataset_name} {report.dataset_version}: "
                     f"{report.terms} terms."

@@ -47,7 +47,7 @@ void main() {
     () async {
       final source = await _writeImage(
         File('${root.path}/large.jpg'),
-        width: 2600,
+        width: 3400,
         height: 1800,
         luminance: 210,
       );
@@ -57,13 +57,13 @@ void main() {
       expect(File(original.localPath).existsSync(), isTrue);
       expect(result.processed.privateId, isNot(original.privateId));
       expect(result.metadata.operations, contains('orientation'));
-      expect(result.metadata.operations, contains('resize_max_2200'));
+      expect(result.metadata.operations, contains('resize_max_3200'));
       expect(
         [
           result.metadata.outputWidth,
           result.metadata.outputHeight,
         ].reduce((a, b) => a > b ? a : b),
-        2200,
+        3200,
       );
     },
   );

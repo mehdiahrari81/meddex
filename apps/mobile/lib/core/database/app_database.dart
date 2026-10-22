@@ -316,18 +316,18 @@ class AppDatabase extends _$AppDatabase {
   Future<void> enqueue(SyncOperationsCompanion operation) =>
       into(syncOperations).insert(operation, mode: InsertMode.insertOrIgnore);
 
-  Future<List<SyncOperation>> pendingOperations({int limit = 50}) {
+  Future<List<SyncOperation>> pendingOperations({int? limit = 50}) {
     final now = DateTime.now().toUtc();
-    return (select(syncOperations)
-          ..where(
-            (row) =>
-                row.syncState.isIn(['pending', 'failed']) &
-                (row.nextAttemptAt.isNull() |
-                    row.nextAttemptAt.isSmallerOrEqualValue(now)),
-          )
-          ..orderBy([(row) => OrderingTerm.asc(row.createdAt)])
-          ..limit(limit))
-        .get();
+    final query = select(syncOperations)
+      ..where(
+        (row) =>
+            row.syncState.isIn(['pending', 'failed']) &
+            (row.nextAttemptAt.isNull() |
+                row.nextAttemptAt.isSmallerOrEqualValue(now)),
+      )
+      ..orderBy([(row) => OrderingTerm.asc(row.createdAt)]);
+    if (limit != null) query.limit(limit);
+    return query.get();
   }
 
   Future<void> markSyncing(String id) =>

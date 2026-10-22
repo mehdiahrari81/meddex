@@ -118,6 +118,7 @@ class _LessonDetailScreenState extends ConsumerState<LessonDetailScreen> {
   late Future<(LearningLesson?, LessonProgress?)> _load;
   int? _index;
   DateTime? _startedAt;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -129,12 +130,10 @@ class _LessonDetailScreenState extends ConsumerState<LessonDetailScreen> {
     final repository = ref.read(learningRepositoryProvider);
     final lesson = await repository.lessonById(widget.lessonId);
     final progress = await repository.lessonProgress(widget.lessonId);
-    _index =
-        progress?.lastSectionIndex.clamp(
-          0,
-          (lesson?.sections.length ?? 1) - 1,
-        ) ??
-        0;
+    final lastIndex = (lesson?.sections.length ?? 0) - 1;
+    _index = lastIndex < 0
+        ? 0
+        : (progress?.lastSectionIndex ?? 0).clamp(0, lastIndex);
     _startedAt = progress?.startedAt ?? DateTime.now().toUtc();
     return (lesson, progress);
   }
@@ -145,6 +144,16 @@ class _LessonDetailScreenState extends ConsumerState<LessonDetailScreen> {
     body: FutureBuilder<(LearningLesson?, LessonProgress?)>(
       future: _load,
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return AppFullScreenError(
+            title: context.l10n.startupErrorTitle,
+            message: context.l10n.learningLoadFailed,
+            retryLabel: context.l10n.retry,
+            onRetry: () => setState(() {
+              _load = _loadLesson();
+            }),
+          );
+        }
         if (!snapshot.hasData) {
           return AppLoadingState(label: context.l10n.startupMessage);
         }
@@ -195,7 +204,7 @@ class _LessonDetailScreenState extends ConsumerState<LessonDetailScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: index == 0
+                    onPressed: _saving || index == 0
                         ? null
                         : () => setState(() => _index = index - 1),
                     icon: const Icon(Icons.arrow_back_rounded),
@@ -205,7 +214,7 @@ class _LessonDetailScreenState extends ConsumerState<LessonDetailScreen> {
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: FilledButton.icon(
-                    onPressed: () => _advance(lesson, index),
+                    onPressed: _saving ? null : () => _advance(lesson, index),
                     icon: Icon(
                       index == lesson.sections.length - 1
                           ? Icons.check_rounded
@@ -227,30 +236,42 @@ class _LessonDetailScreenState extends ConsumerState<LessonDetailScreen> {
   );
 
   Future<void> _advance(LearningLesson lesson, int index) async {
-    final complete = index == lesson.sections.length - 1;
-    final now = DateTime.now().toUtc();
-    await ref
-        .read(learningRepositoryProvider)
-        .saveLessonProgress(
-          LessonProgress(
-            lessonId: lesson.id,
-            lastSectionIndex: index,
-            completionPercentage: (index + 1) / lesson.sections.length,
-            startedAt: _startedAt!,
-            updatedAt: now,
-            completedAt: complete ? now : null,
-            reviewRequired: complete,
-          ),
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      final complete = index == lesson.sections.length - 1;
+      final now = DateTime.now().toUtc();
+      await ref
+          .read(learningRepositoryProvider)
+          .saveLessonProgress(
+            LessonProgress(
+              lessonId: lesson.id,
+              lastSectionIndex: complete ? index : index + 1,
+              completionPercentage: (index + 1) / lesson.sections.length,
+              startedAt: _startedAt!,
+              updatedAt: now,
+              completedAt: complete ? now : null,
+              reviewRequired: complete,
+            ),
+          );
+      ref.invalidate(learningDashboardProvider);
+      if (!mounted) return;
+      if (complete) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.lessonCompleted)));
+        Navigator.of(context).pop();
+      } else {
+        setState(() => _index = index + 1);
+      }
+    } on Object {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.learningSaveFailed)),
         );
-    ref.invalidate(learningDashboardProvider);
-    if (!mounted) return;
-    if (complete) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.l10n.lessonCompleted)));
-      Navigator.of(context).pop();
-    } else {
-      setState(() => _index = index + 1);
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 }

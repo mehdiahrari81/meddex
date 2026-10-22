@@ -5,11 +5,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/tts/tts_provider.dart';
+import '../../auth/application/auth_controller.dart';
+import '../application/prescription_providers.dart';
 import '../../../design_system/tokens.dart';
 import '../../../design_system/widgets/buttons.dart';
 import '../../../design_system/widgets/states.dart';
 import '../../settings/application/settings_controller.dart';
 import '../application/prescription_workflow_controller.dart';
+import 'prescription_ai_consent.dart';
+import '../application/prescription_error_message.dart';
 
 class OcrRawTextReviewScreen extends ConsumerStatefulWidget {
   const OcrRawTextReviewScreen({required this.prescriptionId, super.key});
@@ -23,6 +27,10 @@ class OcrRawTextReviewScreen extends ConsumerStatefulWidget {
 class _OcrRawTextReviewScreenState
     extends ConsumerState<OcrRawTextReviewScreen> {
   TextEditingController? _text;
+  bool _recognizing = false;
+  bool _structuring = false;
+  String? _ocrModel;
+  String? _ocrRevision;
 
   @override
   void initState() {
@@ -122,6 +130,7 @@ class _OcrRawTextReviewScreenState
                 ? TextDirection.rtl
                 : TextDirection.ltr,
             child: TextField(
+              enabled: !_structuring && !_recognizing,
               controller: _text,
               minLines: 8,
               maxLines: 18,
@@ -134,33 +143,183 @@ class _OcrRawTextReviewScreenState
               ),
             ),
           ),
+          if (workflow.pages.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            AppSecondaryButton(
+              label: _recognizing
+                  ? 'Reading handwriting…'
+                  : 'Read handwriting with Gemini',
+              icon: Icons.document_scanner_outlined,
+              expand: true,
+              onPressed: _recognizing || _structuring
+                  ? null
+                  : _recognizeHandwriting,
+            ),
+            TextButton(
+              onPressed: _recognizing || _structuring
+                  ? null
+                  : () => _recognizeHandwriting(useGemini: false),
+              child: const Text('Use local server handwriting reader instead'),
+            ),
+          ],
           const SizedBox(height: AppSpacing.lg),
           AppPrimaryButton(
-            label: 'Review structured fields',
+            label: _structuring
+                ? 'Separating medicines…'
+                : 'Separate medicines with Gemini',
             icon: Icons.view_list_outlined,
             expand: true,
-            onPressed: () async {
-              if (_text!.text != (prescription!.rawOcrText ?? '')) {
-                await ref
-                    .read(prescriptionWorkflowControllerProvider.notifier)
-                    .reparseCorrectedText(_text!.text);
-              }
-              if (context.mounted) {
-                context.go('/prescriptions/${widget.prescriptionId}/review');
-              }
-            },
+            onPressed: _recognizing || _structuring
+                ? null
+                : () async {
+                    final approved = await requestPrescriptionAiConsent(
+                      context,
+                      ref,
+                    );
+                    if (!mounted) return;
+                    setState(() => _structuring = true);
+                    try {
+                      if (approved ||
+                          _text!.text != (prescription!.rawOcrText ?? '')) {
+                        await ref
+                            .read(
+                              prescriptionWorkflowControllerProvider.notifier,
+                            )
+                            .reparseCorrectedText(
+                              _text!.text,
+                              ocrProvider: _ocrModel,
+                              ocrProviderVersion: _ocrRevision,
+                              useGemini: approved,
+                            );
+                      }
+                      if (context.mounted) {
+                        context.go(
+                          '/prescriptions/${widget.prescriptionId}/review',
+                        );
+                      }
+                    } on Object catch (error) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(prescriptionErrorMessage(error)),
+                          ),
+                        );
+                      }
+                    } finally {
+                      if (mounted) setState(() => _structuring = false);
+                    }
+                  },
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          AppSecondaryButton(
+            label: 'Review existing medicine fields',
+            expand: true,
+            onPressed: _structuring || _recognizing
+                ? null
+                : () => context.go(
+                    '/prescriptions/${widget.prescriptionId}/review',
+                  ),
           ),
           const SizedBox(height: AppSpacing.sm),
           AppSecondaryButton(
             label: 'Unable to read — enter manually',
             icon: Icons.edit_note_rounded,
             expand: true,
-            onPressed: () =>
-                context.push('/prescriptions/${widget.prescriptionId}/manual'),
+            onPressed: _structuring || _recognizing
+                ? null
+                : () => context.push(
+                    '/prescriptions/${widget.prescriptionId}/manual',
+                  ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _recognizeHandwriting({bool useGemini = true}) async {
+    if (ref.read(authControllerProvider).valueOrNull?.status !=
+        AuthStatus.authenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Sign in to use secure handwriting recognition.'),
+        ),
+      );
+      return;
+    }
+    final approved = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          useGemini ? 'Read handwriting with Gemini' : 'Recognize handwriting',
+        ),
+        content: Text(
+          useGemini
+              ? 'Send these prescription images through your app server to Google Gemini or Groq to read the handwriting? '
+                    'They may contain personal medical details. The suggested text replaces this editor only; '
+                    'it does not confirm medicines or doses. Review before separating medicines.'
+              : 'Send these images to your app server for temporary CPU recognition? '
+                    'The suggested text replaces this editor only. Review every medicine and dose.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Recognize'),
+          ),
+        ],
+      ),
+    );
+    if (approved != true || !mounted) return;
+    setState(() => _recognizing = true);
+    try {
+      final pages = ref.read(prescriptionWorkflowControllerProvider).pages;
+      final api = ref.read(apiClientProvider);
+      final store = ref.read(prescriptionImageStoreProvider);
+      final preprocessor = ref.read(imagePreprocessorProvider);
+      final accountId = api.currentUserId;
+      final texts = <String>[];
+      for (final page in pages) {
+        if (!mounted || api.currentUserId != accountId) return;
+        final processed = await preprocessor.process(page);
+        try {
+          final bytes = await File(processed.processed.localPath).readAsBytes();
+          if (bytes.length > 6000000) {
+            throw const FormatException('Image too large');
+          }
+          if (!mounted || api.currentUserId != accountId) return;
+          final result = await api.recognizeHandwriting(
+            bytes,
+            useGemini: useGemini,
+          );
+          if (!mounted || api.currentUserId != accountId) return;
+          texts.add(result['text']! as String);
+          _ocrModel = result['model']! as String;
+          _ocrRevision = result['revision']! as String;
+        } finally {
+          await store.delete(processed.processed);
+        }
+      }
+      if (!mounted) return;
+      final text = texts.join('\n\n').trim();
+      if (text.isEmpty) throw const FormatException('No readable handwriting');
+      setState(() => _text!.text = text);
+    } on Object {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Handwriting could not be read. Check the connection and server model, '
+              'retry with a cropped image, or enter the text manually.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _recognizing = false);
+    }
   }
 
   bool _hasUrdu(String value) => RegExp(r'[\u0600-\u06ff]').hasMatch(value);

@@ -1,0 +1,59 @@
+{
+  "version": "verified-2026-10-21",
+  "records": [
+    {
+      "brand": "Betaloc",
+      "ingredient": "metoprolol",
+      "rxcui": "6918",
+      "title": "NHS SPS: Betaloc tablets — metoprolol brand reference",
+      "url": "https://mca.sps.nhs.uk/mca/betaloc-50mg-tablets-astrazeneca-uk-ltd",
+      "jurisdiction": "GB",
+      "verified_at": "2026-10-18T14:20:01Z"
+    },
+    {
+      "brand": "Betaloc CR",
+      "ingredient": "metoprolol",
+      "rxcui": "6918",
+      "title": "Medsafe: Betaloc CR data sheet — metoprolol succinate",
+      "url": "https://www.medsafe.govt.nz/profs/datasheet/b/BetalocCRtab.pdf",
+      "jurisdiction": "NZ",
+      "verified_at": "2026-10-18T14:20:01Z"
+    },
+    {
+      "brand": "CALPOL",
+      "ingredient": "acetaminophen",
+      "rxcui": "161",
+      "title": "CALPOL (Kenvue): paracetamol-containing products",
+      "url": "https://www.calpol.co.uk/",
+      "jurisdiction": "GB",
+      "verified_at": "2026-10-20T20:56:38.722659+00:00"
+    },
+    {
+      "brand": "LEVOLIN",
+      "ingredient": "levalbuterol",
+      "rxcui": "237159",
+      "title": "Cipla: LEVOLIN tablets/syrup — levosalbutamol sulphate",
+      "url": "https://www.ciplamed.com/product-index/levolin-tabletssyrup",
+      "jurisdiction": "IN",
+      "verified_at": "2026-10-20T20:56:38.722659+00:00"
+    },
+    {
+      "brand": "MEFTAL-P",
+      "ingredient": "mefenamic acid",
+      "rxcui": "6693",
+      "title": "Blue Cross Laboratories: MEFTAL-P dispersible tablet product information",
+      "url": "https://bluecrosslabs.com/wp-content/uploads/2023/02/MEFTAL-P-DT-PI.pdf",
+      "jurisdiction": "IN",
+      "verified_at": "2026-10-20T20:56:38.722659+00:00"
+    },
+    {
+      "brand": "DELCON",
+      "ingredient": "chlorpheniramine / phenylephrine",
+      "rxcui": "214393",
+      "title": "Government of India NPPA: DELCON drops — phenylephrine/chlorpheniramine formulation",
+      "url": "https://www.nppa.gov.in/storage/uploads/tender/5943fb12f0f50a8d9a76d1b286b9aa97.pdf",
+      "jurisdiction": "IN",
+      "verified_at": "2026-10-20T20:56:38.722659+00:00"
+    }
+  ]
+}

@@ -10,6 +10,8 @@ import '../../../design_system/widgets/states.dart';
 import '../application/prescription_workflow_controller.dart';
 import '../domain/prescription_models.dart';
 import 'prescription_review_screen.dart';
+import '../../medications/application/medication_providers.dart';
+import 'delete_prescription.dart';
 
 class UnresolvedFieldsReviewScreen extends ConsumerWidget {
   const UnresolvedFieldsReviewScreen({required this.prescriptionId, super.key});
@@ -71,7 +73,7 @@ class UnresolvedFieldsReviewScreen extends ConsumerWidget {
   }
 }
 
-class FinalPrescriptionConfirmationScreen extends ConsumerWidget {
+class FinalPrescriptionConfirmationScreen extends ConsumerStatefulWidget {
   const FinalPrescriptionConfirmationScreen({
     required this.prescriptionId,
     super.key,
@@ -79,7 +81,17 @@ class FinalPrescriptionConfirmationScreen extends ConsumerWidget {
   final String prescriptionId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FinalPrescriptionConfirmationScreen> createState() =>
+      _FinalPrescriptionConfirmationScreenState();
+}
+
+class _FinalPrescriptionConfirmationScreenState
+    extends ConsumerState<FinalPrescriptionConfirmationScreen> {
+  bool _adding = false;
+  String get prescriptionId => widget.prescriptionId;
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(prescriptionWorkflowControllerProvider);
     final prescription = state.prescription;
     if (prescription?.id != prescriptionId) {
@@ -136,41 +148,71 @@ class FinalPrescriptionConfirmationScreen extends ConsumerWidget {
                         ),
                       ),
                   const SizedBox(height: AppSpacing.sm),
-                  const Text('Verification: confirmed by user'),
+                  const Text('Review these details before adding'),
                 ],
               ),
             ),
             const SizedBox(height: AppSpacing.sm),
           ],
           const SizedBox(height: AppSpacing.md),
+          const Text(
+            'Add the reviewed medicines to your list. Reminders stay off until you choose times.',
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          AppSecondaryButton(
+            label: 'Delete prescription',
+            icon: Icons.delete_outline_rounded,
+            onPressed: _adding
+                ? null
+                : () async {
+                    if (await deletePrescriptionWithConfirmation(
+                          context,
+                          ref,
+                          prescriptionId,
+                        ) &&
+                        context.mounted) {
+                      context.go('/scan');
+                    }
+                  },
+          ),
+          const SizedBox(height: AppSpacing.sm),
           AppPrimaryButton(
-            label: 'I confirm this matches my prescription',
+            label: 'Confirm and add to My Medications',
             icon: Icons.check_circle_outline_rounded,
             expand: true,
-            onPressed: () async {
-              try {
-                await ref
-                    .read(prescriptionWorkflowControllerProvider.notifier)
-                    .confirmPrescription();
-                if (context.mounted) {
-                  context.go('/prescriptions/$prescriptionId/saved');
-                }
-              } on Object {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Some medicine names still need explicit confirmation.',
-                      ),
-                    ),
-                  );
-                }
-              }
-            },
+            loading: _adding,
+            onPressed: _adding ? null : _addReviewedMedicines,
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _addReviewedMedicines() async {
+    if (_adding) return;
+    setState(() => _adding = true);
+    try {
+      await ref
+          .read(prescriptionWorkflowControllerProvider.notifier)
+          .confirmPrescription();
+      await ref
+          .read(medicationRepositoryProvider)
+          .saveConfirmedPrescription(prescriptionId);
+      if (mounted) context.go('/medications');
+    } on Object {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Check all medicine details before adding them. '
+              'Your review is saved; retry if needed.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _adding = false);
+    }
   }
 }
 

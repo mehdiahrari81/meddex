@@ -7,8 +7,23 @@ import 'package:uuid/uuid.dart';
 import '../database/app_database.dart';
 import '../network/api_client.dart';
 
+// Outbox metadata only. It is removed before requests reach the strict API schemas.
+const syncDependenciesKey = '_sync_dependencies';
+const syncCancelledKey = '_sync_cancelled';
+
 abstract interface class SyncTransport {
   Future<SyncReceipt> send(SyncOperation operation);
+}
+
+/// Upload preferences never prevent a user-requested deletion of an old backup.
+class DeletionOnlySyncTransport implements SyncTransport {
+  const DeletionOnlySyncTransport(this.delegate);
+  final SyncTransport delegate;
+  bool allows(SyncOperation operation) =>
+      operation.entityType == 'user_medication' &&
+      operation.operationType == 'delete';
+  @override
+  Future<SyncReceipt> send(SyncOperation operation) => delegate.send(operation);
 }
 
 class SyncReceipt {
@@ -66,11 +81,36 @@ class SyncCoordinator {
     _running = true;
     try {
       while (!_disposed) {
-        final operations = await _database.pendingOperations();
+        // A prerequisite may be newer than dozens of waiting dependants. Include
+        // the complete due queue so a batch boundary cannot starve it forever.
+        final operations = await _database.pendingOperations(limit: null);
         if (operations.isEmpty) break;
         var batchFailed = false;
-        for (final operation in operations) {
+        var attempted = false;
+        for (final queued in operations) {
           if (_disposed) return;
+          // A local mutation can remove or amend a queued operation while an
+          // earlier network request is in flight. Never send its stale snapshot.
+          final operation = await (_database.select(
+            _database.syncOperations,
+          )..where((row) => row.id.equals(queued.id))).getSingleOrNull();
+          if (operation == null ||
+              !['pending', 'failed'].contains(operation.syncState) ||
+              !await _dependenciesSatisfied(operation)) {
+            continue;
+          }
+          if ((jsonDecode(operation.payload) as Map)[syncCancelledKey] ==
+              true) {
+            await _database.markSynced(operation.id);
+            attempted = true;
+            continue;
+          }
+          final transport = _transport;
+          if (transport is DeletionOnlySyncTransport &&
+              !transport.allows(operation)) {
+            continue;
+          }
+          attempted = true;
           await _database.markSyncing(operation.id);
           try {
             final receipt = await _transport.send(operation);
@@ -93,13 +133,27 @@ class SyncCoordinator {
           }
         }
         // Drain healthy batches, but back off after a transport failure.
-        if (batchFailed) break;
+        if (batchFailed || !attempted) break;
       }
     } on Object {
       if (!_disposed) rethrow;
     } finally {
       _running = false;
     }
+  }
+
+  Future<bool> _dependenciesSatisfied(SyncOperation operation) async {
+    final payload = (jsonDecode(operation.payload) as Map)
+        .cast<String, Object?>();
+    final dependencies = (payload[syncDependenciesKey] as List?)
+        ?.cast<String>()
+        .toSet();
+    if (dependencies == null || dependencies.isEmpty) return true;
+    final rows = await (_database.select(
+      _database.syncOperations,
+    )..where((row) => row.id.isIn(dependencies))).get();
+    return rows.length == dependencies.length &&
+        rows.every((row) => row.syncState == 'synced');
   }
 }
 
@@ -118,8 +172,9 @@ class ApiSyncTransport implements SyncTransport {
 
   @override
   Future<SyncReceipt> send(SyncOperation operation) async {
-    final payload = (jsonDecode(operation.payload) as Map)
-        .cast<String, Object?>();
+    final payload =
+        (jsonDecode(operation.payload) as Map).cast<String, Object?>()
+          ..remove(syncDependenciesKey);
     final response = switch ((operation.entityType, operation.operationType)) {
       ('saved_item', 'create') => await _api.postJson(
         'me/saved',
@@ -168,6 +223,7 @@ class ApiSyncTransport implements SyncTransport {
         idempotencyKey: operation.idempotencyKey,
       ),
       ('medication_plan', 'delete') => await _deleteMedicationPlan(operation),
+      ('user_medication', 'delete') => await _deleteMedication(operation),
       ('dose_event', 'upsert') => await _api.putJson(
         'medications/dose-events/${operation.entityId}',
         data: payload,
@@ -207,6 +263,16 @@ class ApiSyncTransport implements SyncTransport {
   ) async {
     await _api.delete(
       'prescriptions/${operation.entityId}',
+      idempotencyKey: operation.idempotencyKey,
+    );
+    return {'id': operation.entityId};
+  }
+
+  Future<Map<String, Object?>> _deleteMedication(
+    SyncOperation operation,
+  ) async {
+    await _api.delete(
+      'medications/saved/${operation.entityId}',
       idempotencyKey: operation.idempotencyKey,
     );
     return {'id': operation.entityId};

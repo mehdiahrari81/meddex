@@ -14,3 +14,14 @@ Pods/
 # macOS
 .DS_Store
 
+# Local service runtime and private configuration
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.env
+*.db
+
+# Local IDE caches
+.idea/caches/

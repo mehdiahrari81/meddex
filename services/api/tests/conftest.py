@@ -15,6 +15,22 @@ from app.services.content_import import ContentImporter
 from app.services.email import DeliveryResult, EmailSender
 
 
+@pytest.fixture(autouse=True)
+def isolated_scan_availability(monkeypatch):
+    from app.providers.ai import scan_model_cooldown, shared_cooldown
+
+    # Unit tests must never inherit the developer's actual Groq credential.
+    monkeypatch.setenv("MEDIEXPLAIN_GROQ_API_KEY", "")
+    monkeypatch.setenv("MEDIEXPLAIN_ADMIN_ALLOW_LOCAL_SELF_REVIEW", "false")
+    shared_cooldown.cache_clear()
+    scan_model_cooldown.cache_clear()
+    # Network retries are exercised without real waiting in unit tests.
+    monkeypatch.setattr("app.providers.ai.time.sleep", lambda _: None)
+    yield
+    scan_model_cooldown.cache_clear()
+    shared_cooldown.cache_clear()
+
+
 class CapturingEmailSender(EmailSender):
     def __init__(self) -> None:
         self.reset_tokens: dict[str, str] = {}

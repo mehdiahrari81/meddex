@@ -169,8 +169,8 @@ class _ScanMedicalTermScreenState extends ConsumerState<ScanMedicalTermScreen>
             child: Padding(
               padding: EdgeInsets.all(AppSpacing.md),
               child: AppBanner(
-                message:
-                    'Frame one medical word or abbreviation. You will choose the intended detected term.',
+                message: 'Frame one medical word or abbreviation.',
+                icon: Icons.text_fields_rounded,
               ),
             ),
           ),

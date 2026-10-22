@@ -147,6 +147,25 @@ void main() {
     expect(manager.current, isNull);
     expect(vault.stored, isNull);
   });
+  test(
+    'logout during a pending vault write cannot restore credentials',
+    () async {
+      final vault = _BlockingVault();
+      final manager = SessionManager(
+        refreshClient: MockDio(),
+        vault: vault,
+        baseUrl: Uri.parse('https://api.example.test/api/v1/'),
+      );
+      final writing = manager.set(_session());
+      await vault.started.future;
+      final clearing = manager.clear();
+      vault.proceed.complete();
+      await writing;
+      await clearing;
+      expect(manager.current, isNull);
+      expect(vault.stored, isNull);
+    },
+  );
 }
 
 Session _session({String access = 'access-1', String refresh = 'refresh-1'}) {
@@ -174,4 +193,16 @@ class _MemoryVault implements SessionVault {
 
   @override
   Future<void> write(Session session) async => stored = session;
+}
+
+class _BlockingVault extends _MemoryVault {
+  final started = Completer<void>();
+  final proceed = Completer<void>();
+
+  @override
+  Future<void> write(Session session) async {
+    started.complete();
+    await proceed.future;
+    stored = session;
+  }
 }

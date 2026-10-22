@@ -1,18 +1,24 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../domain/models/session.dart';
+import '../errors/app_error.dart';
 import '../errors/error_mapper.dart';
 import '../storage/session_vault.dart';
+import 'local_api_transport.dart';
 
 class SessionManager {
   factory SessionManager({
     required Dio refreshClient,
     required SessionVault vault,
     required Uri baseUrl,
-  }) => SessionManager._(refreshClient, vault, baseUrl);
+  }) {
+    configureLocalApiTransport(refreshClient, baseUrl);
+    return SessionManager._(refreshClient, vault, baseUrl);
+  }
 
   SessionManager._(this._refreshClient, this._vault, this._baseUrl);
 
@@ -21,22 +27,45 @@ class SessionManager {
   final Uri _baseUrl;
   Session? _session;
   Future<Session?>? _refreshing;
+  Future<void> _storageOperation = Future.value();
+  int _generation = 0;
 
   Session? get current => _session;
 
-  Future<Session?> restore() async {
-    _session = await _vault.read();
-    return _session;
-  }
-
-  Future<void> set(Session session) async {
-    _session = session;
-    await _vault.write(session);
-  }
-
-  Future<void> clear() async {
+  /// Stop an old server connection without deleting the persisted login.
+  void dispose() {
+    _generation++;
     _session = null;
-    await _vault.clear();
+    _refreshClient.close(force: true);
+  }
+
+  Future<T> _serializeStorage<T>(Future<T> Function() operation) {
+    final pending = _storageOperation.then((_) => operation());
+    _storageOperation = pending.then<void>((_) {}, onError: (Object _) {});
+    return pending;
+  }
+
+  Future<Session?> restore() {
+    final generation = _generation;
+    return _serializeStorage(() async {
+      final stored = await _vault.read();
+      if (generation == _generation) _session = stored;
+      return _session;
+    });
+  }
+
+  Future<void> set(Session session) {
+    final generation = ++_generation;
+    return _serializeStorage(() async {
+      await _vault.write(session);
+      if (generation == _generation) _session = session;
+    });
+  }
+
+  Future<void> clear() {
+    _generation++;
+    _session = null;
+    return _serializeStorage(_vault.clear);
   }
 
   Future<Session?> refresh() {
@@ -59,7 +88,9 @@ class SessionManager {
       final refreshed = sessionFromJson(response.data!);
       if (_session?.refreshToken != currentSession.refreshToken) return null;
       await set(refreshed);
-      return refreshed;
+      return _session?.refreshToken == refreshed.refreshToken
+          ? refreshed
+          : null;
     } on DioException catch (error) {
       if (_session?.refreshToken == currentSession.refreshToken &&
           (error.response?.statusCode == 401 ||
@@ -93,11 +124,14 @@ class ApiClient {
             ),
           ),
     );
+    if (dio == null) configureLocalApiTransport(client.dio, baseUrl);
     client.dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          if (expectedUserId != null &&
-              client._sessionManager.current?.userId != expectedUserId) {
+          final requestOwner =
+              options.extra['expectedUserId'] as String? ?? expectedUserId;
+          if (requestOwner != null &&
+              client._sessionManager.current?.userId != requestOwner) {
             return handler.reject(
               DioException(
                 requestOptions: options,
@@ -196,6 +230,36 @@ class ApiClient {
       );
       return response.data ?? <String, Object?>{};
     } on Object catch (error) {
+      throw ErrorMapper.from(error);
+    }
+  }
+
+  Future<Map<String, Object?>> recognizeHandwriting(
+    List<int> bytes, {
+    bool useGemini = false,
+  }) async {
+    try {
+      final response = await dio.post<Map<String, Object?>>(
+        useGemini
+            ? 'prescription-ocr/handwriting/gemini'
+            : 'prescription-ocr/handwriting',
+        data: Uint8List.fromList(bytes),
+        options: Options(
+          contentType: 'image/jpeg',
+          headers: useGemini ? {'X-Cloud-Consent': 'true'} : null,
+          extra: {'expectedUserId': currentUserId},
+          receiveTimeout: const Duration(seconds: 120),
+          sendTimeout: const Duration(seconds: 60),
+        ),
+      );
+      return response.data!;
+    } on Object catch (error) {
+      if (error is DioException && error.type == DioExceptionType.sendTimeout) {
+        throw PrescriptionServiceError(
+          'image_upload_interrupted',
+          cause: error,
+        );
+      }
       throw ErrorMapper.from(error);
     }
   }

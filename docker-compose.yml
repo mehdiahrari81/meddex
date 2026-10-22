@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: mediexplain
       POSTGRES_USER: mediexplain
@@ -17,6 +18,7 @@ services:
 
   api:
     build: ./services/api
+    restart: unless-stopped
     environment:
       MEDIEXPLAIN_ENVIRONMENT: development
       MEDIEXPLAIN_DATABASE_URL: postgresql+psycopg://mediexplain:local-development-only@postgres:5432/mediexplain
@@ -27,7 +29,8 @@ services:
       MEDIEXPLAIN_SMTP_SECURITY: none
     volumes:
       - ./apps/mobile/assets/terminology:/opt/mediexplain/reference:ro
-    command: sh -c "alembic upgrade head && python -m app.cli import-reference --if-empty --path /opt/mediexplain/reference/starter_dataset_v1.json && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+      - ./data:/opt/mediexplain/medicine-reference:ro
+    command: sh -c "alembic upgrade head && python -m app.cli import-reference --if-empty --path /opt/mediexplain/reference/starter_dataset_v1.json && python -m app.cli import-reference --if-empty --additive --path /opt/mediexplain/reference/learning_expansion_v1.json && python -m app.cli import-medications --path /opt/mediexplain/medicine-reference/rxnorm_reference.json && uvicorn app.main:app --host 0.0.0.0 --port 8000"
     ports:
       - "${MEDIEXPLAIN_API_PORT:-8000}:8000"
     depends_on:
@@ -42,6 +45,8 @@ services:
       retries: 10
 
   admin:
+    restart: unless-stopped
+    profiles: [admin]
     build: ./apps/admin
     environment:
       MEDIEXPLAIN_API_URL: http://api:8000/api/v1
@@ -54,6 +59,7 @@ services:
 
   mailpit:
     image: axllent/mailpit:v1
+    restart: unless-stopped
     ports:
       - "127.0.0.1:${MEDIEXPLAIN_MAIL_PORT:-8025}:8025"
       - "127.0.0.1:${MEDIEXPLAIN_SMTP_PORT:-1025}:1025"

@@ -16,12 +16,25 @@ class SharedPreferencesSettingsRepository implements SettingsRepository {
   final SharedPreferencesAsync _preferences;
 
   static const _prefix = 'settings.';
+  static const _serverKey = 'connection.development_server_url';
+  static const _automaticServerKey = 'connection.automatic_server';
 
   @override
   Future<AppSettings> load() async {
     final defaults = const AppSettings.defaults();
     try {
+      final savedServer = await _preferences.getString(_serverKey) ?? '';
       return AppSettings(
+        developmentServerUrl: savedServer,
+        // Older installs pinned a changing LAN IPv4 address. Adopt automatic
+        // discovery on upgrade, retaining an explicitly hosted/manual server.
+        automaticServerConnection:
+            await _preferences.getBool(_automaticServerKey) ??
+            (savedServer.isEmpty ||
+                (Uri.tryParse(savedServer)?.scheme == 'http' &&
+                    RegExp(
+                      r'^\d+\.\d+\.\d+\.\d+$',
+                    ).hasMatch(Uri.tryParse(savedServer)?.host ?? ''))),
         onboardingComplete:
             await _preferences.getBool('${_prefix}onboarding_complete') ??
             defaults.onboardingComplete,
@@ -100,6 +113,11 @@ class SharedPreferencesSettingsRepository implements SettingsRepository {
   Future<void> save(AppSettings settings) async {
     try {
       await Future.wait([
+        _preferences.setString(_serverKey, settings.developmentServerUrl),
+        _preferences.setBool(
+          _automaticServerKey,
+          settings.automaticServerConnection,
+        ),
         _preferences.setBool(
           '${_prefix}onboarding_complete',
           settings.onboardingComplete,
@@ -153,7 +171,7 @@ class SharedPreferencesSettingsRepository implements SettingsRepository {
         ),
       ]);
     } on Object {
-      // Ignore preference save errors on platform channel failure
+      rethrow;
     }
   }
 

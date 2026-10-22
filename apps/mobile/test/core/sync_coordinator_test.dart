@@ -98,6 +98,35 @@ void main() {
   });
 
   test(
+    'upload opt-out still sends requested backup deletions and nothing else',
+    () async {
+      final recorder = _RecordingTransport();
+      final sync = SyncCoordinator(
+        database: database,
+        transport: DeletionOnlySyncTransport(recorder),
+      );
+      await sync.enqueue(
+        entityType: 'medication_plan',
+        entityId: 'keep-local',
+        operationType: 'upsert',
+        payload: '{}',
+      );
+      await sync.enqueue(
+        entityType: 'user_medication',
+        entityId: 'erase-backup',
+        operationType: 'delete',
+        payload: '{"id":"erase-backup"}',
+        tombstone: true,
+      );
+      await sync.synchronize();
+      expect(recorder.sent, ['erase-backup']);
+      final pending = (await database.pendingOperations()).single;
+      expect(pending.entityId, 'keep-local');
+      expect(pending.retryCount, 0);
+    },
+  );
+
+  test(
     'disabled synchronization preserves pending operations without retries',
     () async {
       final coordinator = SyncCoordinator(
@@ -128,4 +157,13 @@ class _FailingTransport implements SyncTransport {
   @override
   Future<SyncReceipt> send(SyncOperation operation) =>
       throw StateError('simulated network failure');
+}
+
+class _RecordingTransport implements SyncTransport {
+  final sent = <String>[];
+  @override
+  Future<SyncReceipt> send(SyncOperation operation) async {
+    sent.add(operation.entityId);
+    return const SyncReceipt(serverRevision: '1');
+  }
 }

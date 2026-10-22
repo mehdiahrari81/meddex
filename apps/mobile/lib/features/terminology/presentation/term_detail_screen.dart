@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/localization/localization_extension.dart';
+import '../../../core/logging/app_logger.dart';
 import '../../../core/tts/tts_provider.dart';
+import '../../../core/tts/tts_service.dart';
 import '../../../design_system/tokens.dart';
 import '../../../design_system/widgets/badges.dart';
 import '../../../design_system/widgets/cards.dart';
@@ -24,10 +28,25 @@ class TermDetailScreen extends ConsumerStatefulWidget {
 
 class _TermDetailScreenState extends ConsumerState<TermDetailScreen> {
   var _speaking = false;
+  late final TextToSpeechService _tts;
+
+  @override
+  void initState() {
+    super.initState();
+    _tts = ref.read(textToSpeechProvider);
+  }
 
   @override
   void dispose() {
-    ref.read(textToSpeechProvider).stop();
+    unawaited(
+      _tts.stop().onError((Object error, StackTrace stack) {
+        AppLogger().log(
+          LogLevel.warning,
+          'term_audio_stop_failed',
+          fields: {'error_type': error.runtimeType.toString()},
+        );
+      }),
+    );
     super.dispose();
   }
 
@@ -58,18 +77,24 @@ class _TermDetailScreenState extends ConsumerState<TermDetailScreen> {
   }
 
   Future<void> _toggleSpeak(MedicalTerm term) async {
-    final service = ref.read(textToSpeechProvider);
-    if (_speaking) {
-      await service.stop();
-      if (mounted) setState(() => _speaking = false);
-      return;
-    }
-    setState(() => _speaking = true);
+    final service = _tts;
+    final stopping = _speaking;
+    if (!stopping) setState(() => _speaking = true);
     try {
-      await service.speak(
-        term.canonicalTerm,
-        locale: Localizations.localeOf(context).languageCode,
-      );
+      if (stopping) {
+        await service.stop();
+      } else {
+        await service.speak(
+          term.canonicalTerm,
+          locale: Localizations.localeOf(context).languageCode,
+        );
+      }
+    } on Object {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.speechUnavailable)));
+      }
     } finally {
       if (mounted) setState(() => _speaking = false);
     }
@@ -303,7 +328,7 @@ class _TermContent extends ConsumerWidget {
                     const SizedBox(height: AppSpacing.md),
                     AppBanner(
                       message: context.l10n.medicalDisclaimerShort,
-                      icon: AppIcons.shield,
+                      icon: Icons.health_and_safety_outlined,
                     ),
                   ],
                 ),

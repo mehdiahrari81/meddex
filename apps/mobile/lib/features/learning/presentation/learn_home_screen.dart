@@ -35,7 +35,15 @@ class LearnHomeScreen extends ConsumerWidget {
       ),
     ];
     return Scaffold(
-      appBar: AppBar(title: Text(context.l10n.learningHome)),
+      appBar: AppBar(
+        title: Text(context.l10n.learningHome),
+        actions: [
+          Padding(
+            padding: const EdgeInsetsDirectional.only(end: AppSpacing.md),
+            child: _StreakBadge(days: dashboard.valueOrNull?.streak.current),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
@@ -111,17 +119,59 @@ class LearnHomeScreen extends ConsumerWidget {
               );
             },
           ),
-          const SizedBox(height: AppSpacing.lg),
-          dashboard.when(
-            loading: () => const SizedBox.shrink(),
-            error: (error, stackTrace) => const SizedBox.shrink(),
-            data: (value) => AppBanner(
-              message:
-                  '${context.l10n.currentStreak}: ${context.l10n.dayCount(value.streak.current)}',
-              icon: Icons.local_fire_department_outlined,
-            ),
-          ),
         ],
+      ),
+    );
+  }
+}
+
+class _StreakBadge extends StatelessWidget {
+  const _StreakBadge({required this.days});
+  final int? days;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final label = days == null
+        ? context.l10n.currentStreak
+        : '${context.l10n.currentStreak}: ${context.l10n.dayCount(days!)}';
+    return Tooltip(
+      message: label,
+      excludeFromSemantics: true,
+      child: TextButton(
+        onPressed: () => context.push(AppRoute.progress.path),
+        style: TextButton.styleFrom(
+          minimumSize: const Size(64, AppDimensions.minTouchTarget),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+          backgroundColor: colors.primary.withValues(alpha: 0.07),
+          foregroundColor: colors.primary,
+          shape: const StadiumBorder(),
+        ),
+        child: Semantics(
+          label: label,
+          excludeSemantics: true,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.local_fire_department_rounded,
+                size: 28,
+                color: colors.primary,
+              ),
+              const SizedBox(width: AppSpacing.xxs),
+              Text(
+                days == null
+                    ? '–'
+                    : MaterialLocalizations.of(context).formatDecimal(days!),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: colors.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

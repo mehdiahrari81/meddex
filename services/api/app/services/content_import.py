@@ -50,15 +50,17 @@ class ContentImporter:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def import_path(self, path: Path, *, dry_run: bool = False) -> ImportReport:
+    def import_path(
+        self, path: Path, *, dry_run: bool = False, additive: bool = False
+    ) -> ImportReport:
         try:
             raw = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as error:
             raise DatasetValidationError(f"Cannot read terminology dataset: {error}") from error
-        return self.import_document(raw, dry_run=dry_run)
+        return self.import_document(raw, dry_run=dry_run, additive=additive)
 
     def import_document(
-        self, raw: Any, *, dry_run: bool = False, commit: bool = True
+        self, raw: Any, *, dry_run: bool = False, commit: bool = True, additive: bool = False
     ) -> ImportReport:
         document = self.validate(raw)
         dataset_name = _string(document, "dataset_name")
@@ -79,12 +81,12 @@ class ContentImporter:
         if dry_run or not report.changed:
             return report
         with self.db.begin_nested():
-            self._sources(document)
-            self._categories(document)
+            self._sources(document, additive=additive)
+            self._categories(document, additive=additive)
             self._morphology(document)
             self._terms(document)
             self._abbreviations(document)
-            self._learning(document)
+            self._learning(document, additive=additive)
             generated_at = _datetime(document, "generated_at")
             self.db.merge(
                 ContentVersion(
@@ -231,9 +233,16 @@ class ContentImporter:
                 if relation not in term_ids:
                     raise DatasetValidationError(f"Unknown related term: {relation}")
             for component in _list(term, "morphology"):
-                element_id = _string(_object(component), "element_id")
+                part = _object(component)
+                element_id = _string(part, "element_id")
                 if element_id not in morphology_ids:
                     raise DatasetValidationError(f"Unknown morphology element: {element_id}")
+                if _string(part, "type") not in {"prefix", "root", "suffix"}:
+                    raise DatasetValidationError("Invalid term morphology type")
+                _string(part, "surface")
+                _string(part, "meaning")
+                _integer(part, "start")
+                _integer(part, "end")
         for abbreviation in _list(document, "abbreviations"):
             value = _object(abbreviation)
             term_id = _string(value, "term_id")
@@ -335,9 +344,11 @@ class ContentImporter:
                 )
         return document
 
-    def _sources(self, document: dict[str, Any]) -> None:
+    def _sources(self, document: dict[str, Any], *, additive: bool = False) -> None:
         for raw in _list(document, "sources"):
             value = _object(raw)
+            if additive and self.db.get(ContentSource, _string(value, "id")) is not None:
+                continue
             self.db.merge(
                 ContentSource(
                     id=_string(value, "id"),
@@ -355,9 +366,11 @@ class ContentImporter:
                 )
             )
 
-    def _categories(self, document: dict[str, Any]) -> None:
+    def _categories(self, document: dict[str, Any], *, additive: bool = False) -> None:
         for raw in _list(document, "categories"):
             value = _object(raw)
+            if additive and self.db.get(Category, _string(value, "id")) is not None:
+                continue
             self.db.merge(
                 Category(
                     id=_string(value, "id"),
@@ -505,9 +518,11 @@ class ContentImporter:
                 )
             )
 
-    def _learning(self, document: dict[str, Any]) -> None:
+    def _learning(self, document: dict[str, Any], *, additive: bool = False) -> None:
         for raw in _list(document, "lessons"):
             value = _object(raw)
+            if additive and self.db.get(LearningLesson, _string(value, "id")) is not None:
+                continue
             lesson_id = _string(value, "id")
             self.db.merge(
                 LearningLesson(
@@ -540,6 +555,8 @@ class ContentImporter:
                 )
         for raw in _list(document, "flashcards"):
             value = _object(raw)
+            if additive and self.db.get(Flashcard, _string(value, "id")) is not None:
+                continue
             self.db.merge(
                 Flashcard(
                     id=_string(value, "id"),
@@ -567,6 +584,9 @@ class ContentImporter:
                     source_id=_string(value, "source_id"),
                 )
             )
+            # Options are inserted without ORM relationships. Persist a newly
+            # created parent first, including when the session disables autoflush.
+            self.db.flush()
             self.db.execute(delete(QuizOption).where(QuizOption.question_id == question_id))
             for position, raw_option in enumerate(_list(value, "options")):
                 option = _object(raw_option)

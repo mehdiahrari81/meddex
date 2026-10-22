@@ -489,7 +489,11 @@ class MedicationCandidateParser {
     final cleaned = line
         .replaceFirst(RegExp(r'^\s*(?:\d+[.)]|[-•*])\s*'), '')
         .trim();
-    if (cleaned.isEmpty || _looksLikeInstruction(cleaned)) return null;
+    if (cleaned.isEmpty ||
+        _looksLikeInstruction(cleaned) ||
+        _looksLikeMetadata(cleaned)) {
+      return null;
+    }
     final end = RegExp(
       r'\s+(?=(?:\d+(?:\.\d+)?|\.\d+)\s*(?:mg|g|mcg|µg|mL|IU|units?|%)\b|tab(?:let)?s?\b|caps?(?:ule)?s?\b)',
       caseSensitive: false,
@@ -514,6 +518,11 @@ class MedicationCandidateParser {
 
   bool _looksLikeInstruction(String line) => RegExp(
     r'^(?:take|apply|instill|inhale|use|give|inject|one|two|half|\d|x\s*\d)',
+    caseSensitive: false,
+  ).hasMatch(line);
+
+  bool _looksLikeMetadata(String line) => RegExp(
+    r'^(?:dr\.?\s|doctor\b|patient\b|name\b|age\b|sex\b|gender\b|date\b|address\b|phone\b|tel\b|clinic\b|hospital\b|diagnosis\b|bp\b|blood pressure\b|weight\b|height\b|pulse\b|temperature\b|follow[ -]?up\b|investigation\b|lab\b|test\b|signature\b|rx\s*:?$)',
     caseSensitive: false,
   ).hasMatch(line);
 }
@@ -543,14 +552,14 @@ class PrescriptionLineSegmenter {
       final hasStrength = _strengthParser.parse(line) != null;
       final startsNew =
           candidate != null &&
-          (current == null || hasStrength || !_looksLikeInstruction(line));
+          (hasStrength || const DosageFormParser().parse(line) != null);
       if (startsNew) {
         if (current != null) {
           segments.add(PrescriptionSegment(startLine: start, lines: current));
         }
         start = index;
         current = [line];
-      } else if (current != null) {
+      } else if (current != null && _looksLikeInstruction(line)) {
         current.add(line);
       }
     }
@@ -571,11 +580,20 @@ class ParsedPrescriptionResult {
     required this.items,
     required this.unclassifiedLines,
     this.prescriptionDate,
+    this.parserVersion = PrescriptionParser.version,
   });
 
   final List<PrescriptionItem> items;
   final List<String> unclassifiedLines;
   final ParserMatch<DateTime>? prescriptionDate;
+  final String parserVersion;
+}
+
+abstract interface class PrescriptionTextStructurer {
+  Future<ParsedPrescriptionResult> structure({
+    required String prescriptionId,
+    required List<({int pageNumber, String text})> pages,
+  });
 }
 
 class PrescriptionParser {

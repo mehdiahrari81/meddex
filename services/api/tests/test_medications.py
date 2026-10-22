@@ -239,3 +239,228 @@ def test_plan_pause_round_trips_as_an_explicit_state(
     assert response.status_code == 200
     assert response.json()["active"] is False
     assert response.json()["medication_status"] == "pausedByUser"
+
+
+def test_saved_medicine_without_invented_instructions_has_no_active_reminders(client, registered):
+    token = registered["access_token"]
+    _confirmed_prescription(client, token)
+    payload = _plan(datetime.now(UTC).isoformat())
+    payload.update(active=False, confirmed_dose_text="", confirmed_frequency="")
+    payload["schedule"] = {"type": "custom", "reminder_times": []}
+    result = client.put(
+        "/api/v1/medications/plans/plan-1", headers=auth_headers(token), json=payload
+    )
+    assert result.status_code == 200
+    assert result.json()["active"] is False
+    assert result.json()["confirmed_dose_text"] == ""
+    payload["active"] = True
+    assert (
+        client.put(
+            "/api/v1/medications/plans/plan-1", headers=auth_headers(token), json=payload
+        ).status_code
+        == 422
+    )
+
+
+def test_deleting_source_scan_preserves_owned_saved_medicine_updates(client, registered):
+    from datetime import timedelta
+
+    token = registered["access_token"]
+    _confirmed_prescription(client, token)
+    now = datetime.now(UTC)
+    payload = _plan(now.isoformat())
+    assert (
+        client.put(
+            "/api/v1/medications/plans/plan-1", headers=auth_headers(token), json=payload
+        ).status_code
+        == 200
+    )
+    assert (
+        client.delete(
+            "/api/v1/prescriptions/11111111-1111-4111-8111-111111111111",
+            headers=auth_headers(token),
+        ).status_code
+        == 204
+    )
+    payload.update(
+        prescription_item_id=None, active=False, updated_at=(now + timedelta(seconds=1)).isoformat()
+    )
+    result = client.put(
+        "/api/v1/medications/plans/plan-1", headers=auth_headers(token), json=payload
+    )
+    assert result.status_code == 200
+    assert result.json()["confirmed_instruction"] == payload["confirmed_instruction"]
+    # A fresh plan cannot use a deleted/unconfirmed source, even with the same names.
+    payload.update(id="new-plan", medication_id="new-medication")
+    assert (
+        client.put(
+            "/api/v1/medications/plans/new-plan", headers=auth_headers(token), json=payload
+        ).status_code
+        == 409
+    )
+
+
+def test_delete_saved_medication_removes_related_records_and_rejects_replay(
+    client: TestClient, registered: dict[str, str]
+) -> None:
+    from sqlalchemy import func, select
+
+    from app.models import (
+        DoseEvent,
+        MedicationNote,
+        MedicationPlan,
+        MedicationPlanHistory,
+        MedicationPlanSource,
+        MedicationSchedule,
+        RefillReminder,
+        ReminderTime,
+        UserMedication,
+    )
+
+    token = registered["access_token"]
+    headers = auth_headers(token)
+    _confirmed_prescription(client, token)
+    payload = _plan(datetime.now(UTC).isoformat())
+    assert (
+        client.put("/api/v1/medications/plans/plan-1", headers=headers, json=payload).status_code
+        == 200
+    )
+    other = dict(
+        payload,
+        id="other-plan",
+        medication_id="other-medicine",
+        source_type="manualEntry",
+        prescription_item_id=None,
+    )
+    assert (
+        client.put("/api/v1/medications/plans/other-plan", headers=headers, json=other).status_code
+        == 200
+    )
+    event = {
+        "id": "deleted-event",
+        "medication_plan_id": "plan-1",
+        "logical_dose_id": "deleted-dose",
+        "scheduled_at": "2026-08-13T08:00:00Z",
+        "action": "taken",
+        "recorded_at": "2026-08-13T08:01:00Z",
+        "source": "app",
+        "note": "Private fixture note",
+        "supersedes_event_id": None,
+        "revision": 1,
+    }
+    assert (
+        client.put(
+            "/api/v1/medications/dose-events/deleted-event", headers=headers, json=event
+        ).status_code
+        == 200
+    )
+    with client.app.state.session_factory() as session:
+        plan = session.scalar(select(MedicationPlan).where(MedicationPlan.client_id == "plan-1"))
+        assert plan is not None
+        plan_pk, medication_pk = plan.id, plan.medication_id
+        schedule_ids = list(
+            session.scalars(
+                select(MedicationSchedule.id).where(MedicationSchedule.plan_id == plan.id)
+            )
+        )
+        session.add(
+            MedicationNote(
+                user_id=plan.user_id, medication_id=medication_pk, note="Private fixture note"
+            )
+        )
+        session.add(RefillReminder(user_id=plan.user_id, plan_id=plan.id))
+        session.add(MedicationPlanHistory(user_id=plan.user_id, plan_id=plan.id, action="fixture"))
+        session.commit()
+    endpoint = "/api/v1/medications/saved/medicine-1"
+    assert client.delete(endpoint, headers=headers).status_code == 204
+    assert client.delete(endpoint, headers=headers).status_code == 204
+    remaining = client.get("/api/v1/medications/plans", headers=headers).json()
+    assert [plan["id"] for plan in remaining] == ["other-plan"]
+    assert (
+        client.put("/api/v1/medications/plans/plan-1", headers=headers, json=payload).status_code
+        == 410
+    )
+    assert (
+        client.put(
+            "/api/v1/medications/dose-events/deleted-event", headers=headers, json=event
+        ).status_code
+        == 404
+    )
+    assert (
+        client.get(
+            "/api/v1/prescriptions/11111111-1111-4111-8111-111111111111", headers=headers
+        ).status_code
+        == 200
+    )
+    with client.app.state.session_factory() as session:
+        for model in (
+            DoseEvent,
+            RefillReminder,
+            MedicationPlanHistory,
+            MedicationPlanSource,
+            MedicationSchedule,
+        ):
+            assert (
+                session.scalar(
+                    select(func.count()).select_from(model).where(model.plan_id == plan_pk)
+                )
+                == 0
+            )
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(ReminderTime)
+                .where(ReminderTime.schedule_id.in_(schedule_ids))
+            )
+            == 0
+        )
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(MedicationNote)
+                .where(MedicationNote.medication_id == medication_pk)
+            )
+            == 0
+        )
+        erased = session.get(UserMedication, medication_pk)
+        assert erased is not None and erased.deleted_at is not None
+        assert (
+            erased.display_name == ""
+            and erased.strength is None
+            and erased.prescription_item_client_id is None
+        )
+
+
+def test_delete_saved_medication_is_owner_scoped_and_offline_delete_blocks_late_upload(
+    client: TestClient, registered: dict[str, str]
+) -> None:
+    owner_headers = auth_headers(registered["access_token"])
+    payload = _plan(datetime.now(UTC).isoformat())
+    payload.update(source_type="manualEntry", prescription_item_id=None)
+    assert (
+        client.put(
+            "/api/v1/medications/plans/plan-1", headers=owner_headers, json=payload
+        ).status_code
+        == 200
+    )
+    second = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "second-delete@example.com",
+            "password": "SecurePassword!123",
+            "display_name": "Second fixture",
+        },
+    ).json()
+    second_headers = auth_headers(second["access_token"])
+    assert (
+        client.delete("/api/v1/medications/saved/medicine-1", headers=second_headers).status_code
+        == 204
+    )
+    assert len(client.get("/api/v1/medications/plans", headers=owner_headers).json()) == 1
+    assert (
+        client.put(
+            "/api/v1/medications/plans/plan-1", headers=second_headers, json=payload
+        ).status_code
+        == 410
+    )
+    assert client.get("/api/v1/medications/plans", headers=second_headers).json() == []

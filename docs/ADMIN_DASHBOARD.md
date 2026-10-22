@@ -1,5 +1,7 @@
 # Admin dashboard · 2026-10-12
 
+> Historical report for an earlier installation. The current `meddex` portal is **http://localhost:3000**, with the existing legitimate catalogue registered and connected to mobile publication. Use your own named administrator and private password. Follow [Admin → database → mobile content flow](ADMIN_MOBILE_DATA_FLOW.md) for the current setup; the demo accounts, port, and counts below do not describe the current installation.
+
 The updated local portal runs at **http://localhost:13001**. Use the current named admin credentials recorded in the private, ignored `CREDENTIALS.md`. This local account signs in with email and password only. The authenticator input appears only after selecting **Use an authenticator code**, for accounts that have enrolled. Production requires named MFA administrators.
 
 ## Interface and behavior

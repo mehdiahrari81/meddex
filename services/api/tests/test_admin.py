@@ -65,6 +65,7 @@ def test_admin_permissions_and_cross_role_denial(client: TestClient) -> None:
 
 
 def test_content_version_review_publish_and_audit(client: TestClient) -> None:
+
     editor = _admin(client, "CONTENT_EDITOR", "editor2@example.com")
     reviewer = _admin(client, "CONTENT_REVIEWER", "reviewer@example.com")
     create = client.post(
@@ -73,7 +74,9 @@ def test_content_version_review_publish_and_audit(client: TestClient) -> None:
         json={
             "stable_id": "term.safe",
             "content_type": "terminology",
-            "content": {"term": "safe"},
+            "content": __import__(
+                "tests.test_reference_releases", fromlist=["_document"]
+            )._document()["terms"][0],
             "source_metadata": {"provider": "reviewed"},
             "change_reason": "Initial reviewed term",
         },
@@ -99,7 +102,7 @@ def test_content_version_review_publish_and_audit(client: TestClient) -> None:
     assert publish.json()["published_revision"] == 1
     factory = client.app.state.session_factory
     with factory() as db:
-        assert len(db.scalars(select(GovernedContentRevision)).all()) == 1
+        assert len(db.scalars(select(GovernedContentRevision)).all()) == 2
         assert len(db.scalars(select(AuditEvent)).all()) >= 4
 
 

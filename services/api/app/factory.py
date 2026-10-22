@@ -20,6 +20,7 @@ from app.core.middleware import (
 )
 from app.db.session import create_database_engine, create_session_factory
 from app.services.email import DevelopmentEmailSender, EmailSender, SmtpEmailSender
+from app.services.prescription_ocr import HandwritingRecognizer
 
 
 def create_app(
@@ -45,6 +46,7 @@ def create_app(
         if resolved_settings.smtp_host
         else DevelopmentEmailSender()
     )
+    app.state.handwriting_recognizer = HandwritingRecognizer()
     app.state.request_metrics = RequestMetrics()
 
     app.add_middleware(

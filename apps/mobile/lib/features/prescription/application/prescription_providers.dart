@@ -1,14 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/database_provider.dart';
+import '../../auth/application/auth_controller.dart';
 import '../../../core/sync/sync_provider.dart';
 import '../../../domain/providers/medical_providers.dart';
 import '../../terminology/application/terminology_providers.dart';
 import '../data/capture_providers.dart';
+import '../data/api_prescription_text_structurer.dart';
 import '../data/device_barcode_provider.dart';
 import '../data/image_processing.dart';
 import '../data/local_prescription_repository.dart';
 import '../data/on_device_ocr_provider.dart';
+import '../data/server_handwriting_ocr_provider.dart';
 import '../data/private_image_store.dart';
 import '../domain/prescription_providers.dart';
 import '../domain/prescription_repository.dart';
@@ -31,7 +34,24 @@ final prescriptionCaptureProvider = Provider<PrescriptionCaptureProvider>(
 );
 
 final prescriptionOcrProvider = Provider<OcrProvider>(
-  (ref) => MlKitOnDeviceOcrProvider(),
+  (ref) => const NativeOnDeviceOcrProvider(),
+);
+
+final handwritingOcrProvider = Provider<OcrProvider>(
+  (ref) => ServerHandwritingOcrProvider(ref.watch(apiClientProvider)),
+);
+final geminiHandwritingOcrProvider = Provider<OcrProvider>(
+  (ref) => ServerHandwritingOcrProvider(
+    ref.watch(apiClientProvider),
+    useGemini: true,
+  ),
+);
+
+final prescriptionTextStructurerProvider = Provider<PrescriptionTextStructurer>(
+  (ref) => ApiPrescriptionTextStructurer(
+    ref.watch(apiClientProvider),
+    frequencyParser: ref.watch(prescriptionParserProvider).frequencyParser,
+  ),
 );
 
 final imagePreprocessorProvider = Provider<ImagePreprocessor>(
@@ -92,9 +112,10 @@ final prescriptionHistoryProvider =
       (ref) => ref.watch(prescriptionRepositoryProvider).watchHistory(),
     );
 
-final latestPrescriptionDraftProvider = FutureProvider(
-  (ref) => ref.watch(prescriptionRepositoryProvider).latestDraft(),
-);
+final latestPrescriptionDraftProvider = FutureProvider((ref) {
+  ref.watch(prescriptionHistoryProvider);
+  return ref.watch(prescriptionRepositoryProvider).latestDraft();
+});
 
 final prescriptionDetailProvider = FutureProvider.family(
   (ref, String id) => ref.watch(prescriptionRepositoryProvider).get(id),

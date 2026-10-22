@@ -8,8 +8,10 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 import '../../../core/tts/tts_provider.dart';
+import '../../../core/logging/app_logger.dart';
 import '../../../core/voice/voice_provider.dart';
 import '../../../core/voice/voice_service.dart';
 import '../../../design_system/tokens.dart';
@@ -18,12 +20,15 @@ import '../../../design_system/widgets/cards.dart';
 import '../../../design_system/widgets/states.dart';
 import '../../prescription/application/prescription_providers.dart';
 import '../../prescription/domain/prescription_models.dart';
+import '../../prescription/presentation/medicine_overview_card.dart';
 import '../application/adherence_calculator.dart';
 import '../application/medication_export_service.dart';
 import '../application/medication_providers.dart';
 import '../application/schedule_engine.dart';
 import '../application/voice_intent_parser.dart';
 import '../domain/medication_models.dart';
+import '../domain/dose_history.dart';
+import 'delete_medication.dart';
 
 class MyMedicationsScreen extends ConsumerWidget {
   const MyMedicationsScreen({super.key});
@@ -31,6 +36,11 @@ class MyMedicationsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final plans = ref.watch(medicationPlansProvider);
+    final history = ref.watch(medicationDoseHistoryProvider(null));
+    final latestByPlan = <String, DoseEvent>{};
+    for (final event in currentDoseEvents(history.valueOrNull ?? const [])) {
+      latestByPlan.putIfAbsent(event.medicationPlanId, () => event);
+    }
     final hideDetails =
         ref.watch(medicationPrivacyProvider).valueOrNull?.hideMedicineDetails ??
         false;
@@ -107,6 +117,20 @@ class MyMedicationsScreen extends ConsumerWidget {
                           ),
                         ),
                         _StatusChip(status: details.medication.status),
+                        IconButton(
+                          key: ValueKey(
+                            'delete-medication-${details.medication.id}',
+                          ),
+                          tooltip: 'Delete medication',
+                          color: Theme.of(context).colorScheme.error,
+                          icon: const Icon(Icons.delete_outline_rounded),
+                          onPressed: () => deleteMedicationWithConfirmation(
+                            context,
+                            ref,
+                            details,
+                            hideDetails: hideDetails,
+                          ),
+                        ),
                       ],
                     ),
                     if (!hideDetails && details.medication.strength != null)
@@ -116,6 +140,21 @@ class MyMedicationsScreen extends ConsumerWidget {
                       hideDetails
                           ? 'Open privacy settings to show medicine information.'
                           : details.source.confirmedInstruction,
+                    ),
+                    if (!hideDetails &&
+                        latestByPlan[details.plan.id] != null) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        _datedDoseLabel(latestByPlan[details.plan.id]!),
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                    TextButton.icon(
+                      onPressed: () => context.push(
+                        '/medications/${details.plan.id}/history',
+                      ),
+                      icon: const Icon(Icons.history_rounded),
+                      label: const Text('Dose history'),
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     Wrap(
@@ -130,7 +169,7 @@ class MyMedicationsScreen extends ConsumerWidget {
                             details.medication.informationStatus ==
                                     MedicineInformationStatus.verified
                                 ? 'Medicine information verified'
-                                : 'Trusted medicine information unavailable',
+                                : 'View medicine explanation',
                           ),
                         ),
                       ],
@@ -630,6 +669,20 @@ class MedicationPlanDetailScreen extends ConsumerWidget {
               if (value.medication.strength != null)
                 Text(value.medication.strength!),
               const SizedBox(height: AppSpacing.md),
+              AppCard(
+                child: PrescriptionMedicineOverview(
+                  query: (
+                    name: value.medication.displayName,
+                    strength: value.medication.strength,
+                    form: value.medication.dosageForm,
+                    language:
+                        Localizations.localeOf(context).languageCode == 'ur'
+                        ? 'ur'
+                        : 'en',
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
               const Text('ORIGINAL PRESCRIPTION / USER-CONFIRMED SOURCE'),
               AppCard(
                 child: Column(
@@ -651,8 +704,12 @@ class MedicationPlanDetailScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Dose: ${value.plan.confirmedDoseText}'),
-                    Text('Frequency: ${value.plan.confirmedFrequency}'),
+                    Text(
+                      'Dose: ${value.plan.confirmedDoseText.isEmpty ? 'Not written' : value.plan.confirmedDoseText}',
+                    ),
+                    Text(
+                      'Frequency: ${value.plan.confirmedFrequency.isEmpty ? 'Not written' : value.plan.confirmedFrequency}',
+                    ),
                     Text('Timezone: ${value.plan.timezone}'),
                     for (final schedule in value.schedules)
                       Text(_scheduleSummary(schedule, context)),
@@ -667,15 +724,27 @@ class MedicationPlanDetailScreen extends ConsumerWidget {
                   FilledButton.icon(
                     onPressed: () => context.push('/medications/$planId/edit'),
                     icon: const Icon(Icons.edit_outlined),
-                    label: const Text('Edit reminder'),
+                    label: const Text('Set reminder'),
                   ),
                   OutlinedButton.icon(
                     onPressed: () async {
-                      await ref
-                          .read(medicationRepositoryProvider)
-                          .setPlanActive(planId, !value.plan.active);
-                      await _rebuildMedicationReminders(ref);
-                      ref.invalidate(medicationPlanProvider(planId));
+                      try {
+                        await ref
+                            .read(medicationRepositoryProvider)
+                            .setPlanActive(planId, !value.plan.active);
+                        await _rebuildMedicationReminders(ref);
+                        ref.invalidate(medicationPlanProvider(planId));
+                      } on Object {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Confirm dose instructions and set reminder times first.',
+                              ),
+                            ),
+                          );
+                        }
+                      }
                     },
                     icon: Icon(
                       value.plan.active ? Icons.pause : Icons.play_arrow,
@@ -730,7 +799,7 @@ class MedicationPlanDetailScreen extends ConsumerWidget {
                   OutlinedButton.icon(
                     onPressed: () => _deleteMedicationPlan(context, ref, value),
                     icon: const Icon(Icons.delete_outline_rounded),
-                    label: const Text('Delete plan'),
+                    label: const Text('Delete medication'),
                   ),
                 ],
               ),
@@ -790,36 +859,10 @@ Future<void> _deleteMedicationPlan(
   WidgetRef ref,
   MedicationPlanDetails details,
 ) async {
-  final deleteLogs = await showDialog<bool?>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Delete medication plan?'),
-      content: const Text(
-        'The original prescription history and saved medicine information stay separate. Choose whether to retain the dose log.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Delete plan, keep logs'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text('Delete plan and logs'),
-        ),
-      ],
-    ),
-  );
-  if (deleteLogs == null) return;
-  await ref
-      .read(medicationRepositoryProvider)
-      .deletePlan(details.plan.id, deleteLogs: deleteLogs);
-  await _rebuildMedicationReminders(ref);
-  ref.invalidate(medicationPlansProvider);
-  if (context.mounted) context.go('/medications');
+  if (await deleteMedicationWithConfirmation(context, ref, details) &&
+      context.mounted) {
+    context.go('/medications');
+  }
 }
 
 class _MedicationTtsControls extends ConsumerStatefulWidget {
@@ -889,7 +932,7 @@ class EditReminderScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final details = ref.watch(medicationPlanProvider(planId));
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Reminder')),
+      appBar: AppBar(title: const Text('Set Reminder')),
       body: details.when(
         loading: () => const AppLoadingState(label: 'Loading reminder…'),
         error: (_, _) => const SizedBox.shrink(),
@@ -910,14 +953,134 @@ class _EditReminderForm extends ConsumerStatefulWidget {
 
 class _EditReminderFormState extends ConsumerState<_EditReminderForm> {
   late final List<TimeOfDay> _times;
+  late final MedicationSchedule? _schedule;
+  late String _timezone;
+  bool _loadingTimezone = false;
+  bool _timezoneUnavailable = false;
+  bool _saving = false;
+
+  bool get _asNeeded =>
+      _schedule?.asNeeded == true ||
+      _schedule?.type == MedicationScheduleType.asNeeded;
+  bool get _interval => _schedule?.type == MedicationScheduleType.everyNHours;
+  bool get _hasInstructions =>
+      widget.details.plan.confirmedDoseText.trim().isNotEmpty &&
+      widget.details.plan.confirmedFrequency.trim().isNotEmpty;
+
   @override
   void initState() {
     super.initState();
+    _schedule = widget.details.schedules.firstOrNull;
+    _timezone = widget.details.plan.timezone;
     _times = widget.details.schedules
         .expand((schedule) => schedule.times)
         .map((minutes) => TimeOfDay(hour: minutes ~/ 60, minute: minutes % 60))
         .toList();
-    if (_times.isEmpty) _times.add(const TimeOfDay(hour: 8, minute: 0));
+    if (_interval && _schedule?.intervalAnchor != null) {
+      final anchor = tz.TZDateTime.from(
+        _schedule!.intervalAnchor!,
+        (_timezone == 'UTC' ? tz.UTC : tz.getLocation(_timezone)),
+      );
+      _times
+        ..clear()
+        ..add(TimeOfDay(hour: anchor.hour, minute: anchor.minute));
+    } else if (!_asNeeded && _times.isEmpty) {
+      _times.add(const TimeOfDay(hour: 8, minute: 0));
+      if (!widget.details.plan.active) {
+        // A medicine saved from a scan has no reminder timezone yet. Choose
+        // the device zone before its first schedule, and show it explicitly.
+        _loadingTimezone = true;
+        _loadInitialTimezone();
+      }
+    }
+  }
+
+  Future<void> _loadInitialTimezone() async {
+    try {
+      final local = await FlutterTimezone.getLocalTimezone();
+      if (local.identifier != 'UTC') tz.getLocation(local.identifier);
+      if (mounted) {
+        setState(() {
+          _timezone = local.identifier;
+          _timezoneUnavailable = false;
+          _loadingTimezone = false;
+        });
+      }
+    } on Object {
+      if (mounted) {
+        setState(() {
+          _timezoneUnavailable = true;
+          _loadingTimezone = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _save() async {
+    if (_saving ||
+        !_hasInstructions ||
+        _loadingTimezone ||
+        _timezoneUnavailable) {
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      DateTime? anchor = _schedule?.intervalAnchor;
+      if (_interval && anchor != null) {
+        final location = (_timezone == 'UTC'
+            ? tz.UTC
+            : tz.getLocation(_timezone));
+        final original = tz.TZDateTime.from(anchor, location);
+        anchor = tz.TZDateTime(
+          location,
+          original.year,
+          original.month,
+          original.day,
+          _times.single.hour,
+          _times.single.minute,
+        ).toUtc();
+      }
+      await ref
+          .read(medicationRepositoryProvider)
+          .replaceSchedule(
+            widget.details.plan.id,
+            type: _schedule?.type ?? MedicationScheduleType.custom,
+            reminderTimes: _asNeeded || _interval
+                ? const []
+                : _times.map((time) => time.hour * 60 + time.minute).toList(),
+            weekdays: _schedule?.weekdays ?? const {},
+            intervalHours: _schedule?.intervalHours,
+            intervalAnchor: anchor,
+            asNeeded: _asNeeded,
+            timezone: _timezone,
+            activate: true,
+          );
+      ref.invalidate(medicationPlanProvider(widget.details.plan.id));
+      try {
+        await _rebuildMedicationReminders(ref);
+      } on Object {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Reminder times saved. Notifications could not be updated; check notification settings.',
+              ),
+            ),
+          );
+        }
+      }
+      if (mounted) context.pop();
+    } on Object {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not save reminder times. Please retry.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override
@@ -930,37 +1093,61 @@ class _EditReminderFormState extends ConsumerState<_EditReminderForm> {
         icon: Icons.lock_outline_rounded,
       ),
       const SizedBox(height: AppSpacing.md),
-      for (var index = 0; index < _times.length; index++)
+      Text(
+        _asNeeded
+            ? 'As needed · no fixed reminders'
+            : _scheduleLabel(_schedule?.type ?? MedicationScheduleType.custom),
+      ),
+      if (_schedule?.weekdays.isNotEmpty ?? false)
+        Text(
+          'Days: ${_schedule!.weekdays.map((day) => const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][day - 1]).join(', ')}',
+        ),
+      if (_interval)
+        Text(
+          'Every ${_schedule?.intervalHours} hours from the chosen start time',
+        ),
+      Text(
+        _loadingTimezone ? 'Reading device timezone…' : 'Timezone: $_timezone',
+      ),
+      if (_timezoneUnavailable)
+        TextButton(
+          onPressed: () {
+            setState(() => _loadingTimezone = true);
+            _loadInitialTimezone();
+          },
+          child: const Text('Could not read device timezone. Retry'),
+        ),
+      if (!_hasInstructions)
+        const AppBanner(
+          message:
+              'A reminder needs a confirmed dose and frequency. Check the prescription before creating a reminder. This medicine remains saved.',
+          icon: Icons.info_outline_rounded,
+        ),
+      for (var index = 0; !_asNeeded && index < _times.length; index++)
         ListTile(
           title: Text(_times[index].format(context)),
           leading: const Icon(Icons.alarm_outlined),
-          onTap: () async {
-            final value = await showTimePicker(
-              context: context,
-              initialTime: _times[index],
-            );
-            if (value != null) setState(() => _times[index] = value);
-          },
+          onTap: _saving
+              ? null
+              : () async {
+                  final value = await showTimePicker(
+                    context: context,
+                    initialTime: _times[index],
+                  );
+                  if (value != null && mounted) {
+                    setState(() => _times[index] = value);
+                  }
+                },
         ),
       FilledButton(
-        onPressed: () async {
-          await ref
-              .read(medicationRepositoryProvider)
-              .replaceSchedule(
-                widget.details.plan.id,
-                type: _times.length == 1
-                    ? MedicationScheduleType.onceDaily
-                    : MedicationScheduleType.custom,
-                reminderTimes: _times
-                    .map((time) => time.hour * 60 + time.minute)
-                    .toList(),
-                weekdays: const {},
-              );
-          await _rebuildMedicationReminders(ref);
-          ref.invalidate(medicationPlanProvider(widget.details.plan.id));
-          if (context.mounted) context.pop();
-        },
-        child: const Text('Save reminder times'),
+        onPressed:
+            _saving ||
+                !_hasInstructions ||
+                _loadingTimezone ||
+                _timezoneUnavailable
+            ? null
+            : _save,
+        child: Text(_saving ? 'Saving…' : 'Save reminder times'),
       ),
     ],
   );
@@ -993,6 +1180,12 @@ class _TimelineList extends ConsumerWidget {
     final start = DateTime(now.year, now.month, now.day).toUtc();
     final end = start.add(const Duration(days: 1));
     const engine = ScheduleEngine();
+    final events = {
+      for (final event in currentDoseEvents(
+        ref.watch(medicationDoseHistoryProvider(null)).valueOrNull ?? const [],
+      ))
+        event.logicalDoseId: event,
+    };
     final doses = <ScheduledDose>[];
     for (final details in plans) {
       for (final schedule in details.schedules) {
@@ -1009,7 +1202,12 @@ class _TimelineList extends ConsumerWidget {
               medicationName: details.medication.displayName,
               doseText: details.plan.confirmedDoseText,
               scheduledAt: time,
-              action: DoseAction.notRecorded,
+              action:
+                  events[engine.logicalDoseId(details.plan.id, time)]?.action ??
+                  DoseAction.notRecorded,
+              recordedAt: events[engine.logicalDoseId(details.plan.id, time)]
+                  ?.recordedAt,
+              eventId: events[engine.logicalDoseId(details.plan.id, time)]?.id,
             ),
           );
         }
@@ -1029,21 +1227,111 @@ class _TimelineList extends ConsumerWidget {
       separatorBuilder: (_, _) => const Divider(),
       itemBuilder: (context, index) {
         final dose = doses[index];
-        return Semantics(
-          label:
-              '${DateFormat.jm().format(dose.scheduledAt.toLocal())}, ${dose.medicationName}, ${dose.doseText}',
-          child: ListTile(
-            leading: Text(DateFormat.jm().format(dose.scheduledAt.toLocal())),
-            title: Text(dose.medicationName),
-            subtitle: Text(dose.doseText),
-            trailing: Row(
+        return _DoseTimelineRow(key: ValueKey(dose.logicalDoseId), dose: dose);
+      },
+    );
+  }
+}
+
+String _datedDoseLabel(DoseEvent event) =>
+    '${_doseLabel(event.action)} • ${DateFormat.yMMMd().add_jm().format(event.recordedAt.toLocal())}';
+
+class _DoseTimelineRow extends ConsumerStatefulWidget {
+  const _DoseTimelineRow({required this.dose, super.key});
+  final ScheduledDose dose;
+  @override
+  ConsumerState<_DoseTimelineRow> createState() => _DoseTimelineRowState();
+}
+
+class _DoseTimelineRowState extends ConsumerState<_DoseTimelineRow> {
+  bool _saving = false;
+
+  Future<void> _record(DoseAction action) async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    final dose = widget.dose;
+    final repository = ref.read(medicationRepositoryProvider);
+    try {
+      await repository.recordDose(
+        planId: dose.planId,
+        logicalDoseId: dose.logicalDoseId,
+        scheduledAt: dose.scheduledAt,
+        action: action,
+        source: DoseEventSource.app,
+      );
+      if (mounted) {
+        ref.invalidate(medicationActivityProvider);
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(
+                '${dose.medicationName}: ${_doseLabel(action).toLowerCase()} recorded',
+              ),
+            ),
+          );
+      }
+      // Notification availability must never prevent local dose recording.
+      if (mounted) {
+        unawaited(() async {
+          try {
+            await ref
+                .read(medicationReminderServiceProvider)
+                .cancelDose(dose.logicalDoseId);
+          } on Object catch (error) {
+            AppLogger().log(
+              LogLevel.warning,
+              'dose_notification_cancel_failed',
+              fields: {'error_type': error.runtimeType.toString()},
+            );
+          }
+        }());
+      }
+    } on Object {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not record this dose. Please retry.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dose = widget.dose;
+    final recorded = doseWasRecorded(dose.action);
+    return ListTile(
+      leading: Text(DateFormat.jm().format(dose.scheduledAt.toLocal())),
+      title: Text(dose.medicationName),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(dose.doseText),
+          if (recorded && dose.recordedAt != null)
+            Text(
+              '${_doseLabel(dose.action)} • ${DateFormat.yMMMd().add_jm().format(dose.recordedAt!.toLocal())}',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+        ],
+      ),
+      trailing: _saving
+          ? const SizedBox.square(
+              dimension: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                IconButton(
-                  tooltip: 'Snooze',
-                  onPressed: () => _chooseSnooze(context, ref, dose),
-                  icon: const Icon(Icons.snooze_rounded),
-                ),
+                if (!recorded)
+                  IconButton(
+                    tooltip: 'Snooze',
+                    onPressed: () => _chooseSnooze(context, ref, dose),
+                    icon: const Icon(Icons.snooze_rounded),
+                  ),
                 PopupMenuButton<DoseAction>(
                   tooltip: 'Record dose',
                   itemBuilder: (_) => const [
@@ -1056,57 +1344,12 @@ class _TimelineList extends ConsumerWidget {
                       child: Text('Skip'),
                     ),
                   ],
-                  onSelected: (action) async {
-                    await _confirmDose(context, ref, dose, action);
-                  },
+                  onSelected: _record,
                 ),
               ],
             ),
-          ),
-        );
-      },
     );
   }
-}
-
-Future<void> _confirmDose(
-  BuildContext context,
-  WidgetRef ref,
-  ScheduledDose dose,
-  DoseAction action,
-) async {
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text(
-        action == DoseAction.taken ? 'Mark as taken?' : 'Mark as skipped?',
-      ),
-      content: Text(
-        '${dose.medicationName} scheduled for ${DateFormat.jm().format(dose.scheduledAt.toLocal())}',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => context.pop(false),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => context.pop(true),
-          child: const Text('Confirm'),
-        ),
-      ],
-    ),
-  );
-  if (confirmed != true) return;
-  await ref
-      .read(medicationRepositoryProvider)
-      .recordDose(
-        planId: dose.planId,
-        logicalDoseId: dose.logicalDoseId,
-        scheduledAt: dose.scheduledAt,
-        action: action,
-        source: DoseEventSource.app,
-      );
-  ref.invalidate(medicationDoseHistoryProvider);
 }
 
 Future<void> _chooseSnooze(
@@ -1174,53 +1417,72 @@ class DoseHistoryScreen extends ConsumerWidget {
             ),
       body: history.when(
         loading: () => const AppLoadingState(label: 'Loading dose history…'),
-        error: (_, _) => const SizedBox.shrink(),
-        data: (values) => values.isEmpty
-            ? const AppEmptyState(
-                title: 'No dose entries',
-                message:
-                    'Opening a notification does not count as taking a dose.',
-                icon: Icons.history_toggle_off_rounded,
-              )
-            : ListView.builder(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                itemCount: values.length,
-                itemBuilder: (context, index) {
-                  final event = values[index];
-                  return ListTile(
-                    leading: Icon(
-                      event.action == DoseAction.taken
-                          ? Icons.check_circle_outline
-                          : event.action == DoseAction.skipped
-                          ? Icons.remove_circle_outline
-                          : Icons.schedule_outlined,
-                    ),
-                    title: Text(_doseLabel(event.action)),
-                    subtitle: Text(
-                      '${DateFormat.yMMMd().add_jm().format(event.recordedAt.toLocal())} • ${event.source == DoseEventSource.manualEntry ? 'MANUAL ENTRY' : event.source.name}',
-                    ),
-                    trailing: PopupMenuButton<DoseAction>(
-                      tooltip: 'Correct entry',
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(
-                          value: DoseAction.taken,
-                          child: Text('Correct to Taken'),
-                        ),
-                        PopupMenuItem(
-                          value: DoseAction.skipped,
-                          child: Text('Correct to Skipped'),
-                        ),
-                      ],
-                      onSelected: (action) async {
-                        await ref
-                            .read(medicationRepositoryProvider)
-                            .correctDose(eventId: event.id, action: action);
-                        ref.invalidate(medicationDoseHistoryProvider(planId));
-                      },
-                    ),
-                  );
-                },
-              ),
+        error: (_, _) => AppFullScreenError(
+          title: 'Dose history unavailable',
+          message: 'Your saved medication is still on this device.',
+          retryLabel: 'Try again',
+          onRetry: () => ref.invalidate(medicationDoseHistoryProvider(planId)),
+        ),
+        data: (history) {
+          final values = currentDoseEvents(history);
+          return values.isEmpty
+              ? const AppEmptyState(
+                  title: 'No dose entries',
+                  message:
+                      'Opening a notification does not count as taking a dose.',
+                  icon: Icons.history_toggle_off_rounded,
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  itemCount: values.length,
+                  itemBuilder: (context, index) {
+                    final event = values[index];
+                    return ListTile(
+                      leading: Icon(
+                        event.action == DoseAction.taken
+                            ? Icons.check_circle_outline
+                            : event.action == DoseAction.skipped
+                            ? Icons.remove_circle_outline
+                            : Icons.schedule_outlined,
+                      ),
+                      title: Text(_doseLabel(event.action)),
+                      subtitle: Text(
+                        '${DateFormat.yMMMd().add_jm().format(event.recordedAt.toLocal())}${event.supersedesEventId != null ? ' • Updated entry' : ''}',
+                      ),
+                      trailing: PopupMenuButton<DoseAction>(
+                        tooltip: 'Correct entry',
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(
+                            value: DoseAction.taken,
+                            child: Text('Correct to Taken'),
+                          ),
+                          PopupMenuItem(
+                            value: DoseAction.skipped,
+                            child: Text('Correct to Skipped'),
+                          ),
+                        ],
+                        onSelected: (action) async {
+                          try {
+                            await ref
+                                .read(medicationRepositoryProvider)
+                                .correctDose(eventId: event.id, action: action);
+                          } on Object {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Could not update this dose. Please retry.',
+                                  ),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                    );
+                  },
+                );
+        },
       ),
     );
   }
@@ -1257,7 +1519,7 @@ class _MedicationCalendarScreenState
     final days = DateUtils.getDaysInMonth(_selected.year, _selected.month);
     final history =
         ref.watch(medicationDoseHistoryProvider(null)).valueOrNull ?? [];
-    final selectedEvents = history.where((event) {
+    final selectedEvents = currentDoseEvents(history).where((event) {
       final date = (event.scheduledAt ?? event.recordedAt).toLocal();
       return DateUtils.isSameDay(date, _selected);
     }).toList();
@@ -1666,6 +1928,7 @@ class _ShareMedicationSummaryScreenState
                       ShareParams(
                         text: preview.plainText,
                         subject: 'User medication summary',
+                        sharePositionOrigin: _shareOrigin(),
                       ),
                     );
                   },
@@ -1680,6 +1943,14 @@ class _ShareMedicationSummaryScreenState
         ],
       ),
     );
+  }
+
+  Rect _shareOrigin() {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box != null && box.hasSize) {
+      return box.localToGlobal(Offset.zero) & box.size;
+    }
+    return const Rect.fromLTWH(0, 0, 1, 1);
   }
 
   Future<void> _sharePdf(MedicationSummaryPreview preview) async {
@@ -1700,6 +1971,7 @@ class _ShareMedicationSummaryScreenState
       ShareParams(
         files: [XFile(file.path)],
         subject: 'User medication summary',
+        sharePositionOrigin: _shareOrigin(),
       ),
     );
   }

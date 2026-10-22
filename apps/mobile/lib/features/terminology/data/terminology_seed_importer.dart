@@ -37,13 +37,24 @@ class TerminologySeedImporter {
     final raw = await _assets.loadString(
       'assets/terminology/starter_dataset_v1.json',
     );
-    return importJson(raw, dryRun: dryRun, onlyIfEmpty: true);
+    final report = await importJson(raw, dryRun: dryRun, onlyIfEmpty: true);
+    final expansion = await _assets.loadString(
+      'assets/terminology/learning_expansion_v1.json',
+    );
+    await importJson(
+      expansion,
+      dryRun: dryRun,
+      onlyIfEmpty: true,
+      additive: true,
+    );
+    return report;
   }
 
   Future<TerminologyImportReport> importJson(
     String raw, {
     bool dryRun = false,
     bool onlyIfEmpty = false,
+    bool additive = false,
   }) async {
     final document = _validate(jsonDecode(raw));
     final datasetVersion = document.string('dataset_version');
@@ -68,12 +79,20 @@ class TerminologySeedImporter {
     );
     if (dryRun || !report.changed) return report;
     await _database.transaction(() async {
-      await _importSources(document.list('sources'));
-      await _importCategories(document.list('categories'));
+      await _importSources(document.list('sources'), additive: additive);
+      await _importCategories(document.list('categories'), additive: additive);
       await _importMorphology(document.list('morphology'));
       await _importTerms(document.list('terms'), document.list('sources'));
+      final withdrawn =
+          (document['withdrawn_abbreviation_ids'] as List?)?.cast<String>() ??
+          const <String>[];
+      if (withdrawn.isNotEmpty) {
+        await (_database.delete(
+          _database.medicalAbbreviations,
+        )..where((row) => row.id.isIn(withdrawn))).go();
+      }
       await _importAbbreviations(document.list('abbreviations'));
-      await _importLearning(document);
+      await _importLearning(document, additive: additive);
       await _database
           .into(_database.contentVersions)
           .insertOnConflictUpdate(
@@ -111,6 +130,14 @@ class TerminologySeedImporter {
       if (!raw.containsKey(key)) {
         throw FormatException('Missing dataset field: $key');
       }
+    }
+    final withdrawn = raw['withdrawn_abbreviation_ids'];
+    if (withdrawn != null &&
+        (withdrawn is! List ||
+            withdrawn.any(
+              (id) => id is! String || id.isEmpty || id.length > 100,
+            ))) {
+      throw const FormatException('Invalid withdrawn abbreviation IDs.');
     }
     raw.string('dataset_name');
     raw.string('dataset_version');
@@ -370,9 +397,19 @@ class TerminologySeedImporter {
     return raw;
   }
 
-  Future<void> _importSources(List<Object?> values) async {
+  Future<void> _importSources(
+    List<Object?> values, {
+    bool additive = false,
+  }) async {
     for (final value in values) {
       final item = value.object();
+      if (additive &&
+          await (_database.select(_database.contentSources)
+                    ..where((row) => row.id.equals(item.string('id'))))
+                  .getSingleOrNull() !=
+              null) {
+        continue;
+      }
       await _database
           .into(_database.contentSources)
           .insertOnConflictUpdate(
@@ -403,9 +440,19 @@ class TerminologySeedImporter {
     }
   }
 
-  Future<void> _importCategories(List<Object?> values) async {
+  Future<void> _importCategories(
+    List<Object?> values, {
+    bool additive = false,
+  }) async {
     for (final value in values) {
       final item = value.object();
+      if (additive &&
+          await (_database.select(_database.medicalCategories)
+                    ..where((row) => row.id.equals(item.string('id'))))
+                  .getSingleOrNull() !=
+              null) {
+        continue;
+      }
       await _database
           .into(_database.medicalCategories)
           .insertOnConflictUpdate(
@@ -654,9 +701,19 @@ class TerminologySeedImporter {
     }
   }
 
-  Future<void> _importLearning(Map<String, Object?> document) async {
+  Future<void> _importLearning(
+    Map<String, Object?> document, {
+    bool additive = false,
+  }) async {
     for (final value in document.list('lessons')) {
       final item = value.object();
+      if (additive &&
+          await (_database.select(_database.learningLessons)
+                    ..where((row) => row.id.equals(item.string('id'))))
+                  .getSingleOrNull() !=
+              null) {
+        continue;
+      }
       await _database
           .into(_database.learningLessons)
           .insertOnConflictUpdate(
@@ -676,6 +733,16 @@ class TerminologySeedImporter {
               sourceId: item.string('source_id'),
             ),
           );
+      final sectionIds = item
+          .list('sections')
+          .map((section) => section.object().string('id'))
+          .toList();
+      await (_database.delete(_database.lessonSections)..where(
+            (row) =>
+                row.lessonId.equals(item.string('id')) &
+                row.id.isNotIn(sectionIds),
+          ))
+          .go();
       for (final rawSection in item.list('sections')) {
         final section = rawSection.object();
         await _database
@@ -697,6 +764,13 @@ class TerminologySeedImporter {
     }
     for (final value in document.list('flashcards')) {
       final item = value.object();
+      if (additive &&
+          await (_database.select(_database.flashcards)
+                    ..where((row) => row.id.equals(item.string('id'))))
+                  .getSingleOrNull() !=
+              null) {
+        continue;
+      }
       await _database
           .into(_database.flashcards)
           .insertOnConflictUpdate(
@@ -728,6 +802,16 @@ class TerminologySeedImporter {
               sourceId: item.string('source_id'),
             ),
           );
+      final optionIds = item
+          .list('options')
+          .map((option) => option.object().string('id'))
+          .toList();
+      await (_database.delete(_database.quizOptions)..where(
+            (row) =>
+                row.questionId.equals(item.string('id')) &
+                row.id.isNotIn(optionIds),
+          ))
+          .go();
       var position = 0;
       for (final rawOption in item.list('options')) {
         final option = rawOption.object();

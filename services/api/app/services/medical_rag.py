@@ -24,10 +24,13 @@ from app.models import (
 from app.providers.ai import (
     AiExplanationProvider,
     DisabledAiProvider,
+    GeminiOllamaProvider,
     GeneratedExplanation,
     OllamaProvider,
     OpenAiCompatibleProvider,
+    shared_cooldown,
 )
+from app.providers.cloud_fallback import CloudProvider
 from app.schemas.intelligence import AiAnswerRead, AiQuestionRequest, SourceReferenceRead
 
 _NUMBER = re.compile(
@@ -141,6 +144,9 @@ class MedicalRagService:
         answer = template_answer
         ai_used = False
         used_facts = selected[:1]
+        generated_provider: str = self.settings.ai_provider
+        generation_model: str | None = None
+        fallback_reason: str | None = None
         generation_issue = "AI generation is disabled; the original source text is shown."
         if self._ai_enabled():
             started = time.monotonic()
@@ -151,6 +157,9 @@ class MedicalRagService:
                     context=self._context_text(context.medication, selected),
                     question=question,
                 )
+                generated_provider = generated.provider or self.settings.ai_provider
+                generation_model = generated.model
+                fallback_reason = generated.fallback_reason
                 if self._grounded(generated, context.medication, selected) and (
                     request.language != "ur" or re.search(r"[\u0600-\u06ff]", generated.answer)
                 ):
@@ -169,7 +178,7 @@ class MedicalRagService:
                 )
             self.db.add(
                 ProviderHealthEvent(
-                    provider=f"ai_{self.settings.ai_provider}",
+                    provider=f"ai_{generated_provider}",
                     operation="explanation",
                     success=ai_used,
                     latency_ms=(time.monotonic() - started) * 1000,
@@ -201,6 +210,9 @@ class MedicalRagService:
             referenced_medication_ids=[context.medication.id],
             language=request.language,
             ai_provider_used=ai_used,
+            generation_provider=generated_provider if ai_used else None,
+            generation_model=generation_model if ai_used else None,
+            provider_fallback_reason=fallback_reason,
         )
         self._store_redacted(user_id, request, response)
         return response
@@ -340,6 +352,7 @@ class MedicalRagService:
             ]
             if any(
                 len(name.strip()) >= 4
+                and self._normalized_name(name) not in allowed_medications
                 and re.search(rf"\b{re.escape(name.strip().casefold())}\b", lowered_answer)
                 for name in other_names
                 if name.strip()
@@ -438,6 +451,27 @@ class MedicalRagService:
         return bool(flag and flag.enabled and self.provider.configured)
 
     def _provider(self) -> AiExplanationProvider:
+        if self.settings.ai_provider == "gemini_ollama":
+            key = (
+                self.settings.gemini_api_key.get_secret_value()
+                if self.settings.gemini_api_key
+                else None
+            )
+            return GeminiOllamaProvider(
+                primary=CloudProvider(
+                    settings=self.settings,
+                    client=self.client,
+                    model=self.settings.gemini_model,
+                    timeout_seconds=self.settings.gemini_timeout_seconds,
+                ),
+                fallback=OllamaProvider(
+                    client=self.client,
+                    base_url=self.settings.ollama_base_url,
+                    model=self.settings.ollama_model,
+                ),
+                cooldown=shared_cooldown(hash_opaque_token(key or ""), self.settings.gemini_model),
+                cooldown_seconds=self.settings.gemini_cooldown_seconds,
+            )
         if (
             self.settings.ai_provider == "openai_compatible"
             and self.settings.ai_base_url

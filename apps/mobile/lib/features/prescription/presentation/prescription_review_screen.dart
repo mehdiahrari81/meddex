@@ -5,13 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../design_system/tokens.dart';
-import '../../../design_system/widgets/badges.dart';
 import '../../../design_system/widgets/buttons.dart';
 import '../../../design_system/widgets/cards.dart';
 import '../../../design_system/widgets/states.dart';
-import '../../../domain/models/confidence_result.dart';
 import '../application/prescription_workflow_controller.dart';
 import '../domain/prescription_models.dart';
+import 'delete_prescription.dart';
+import 'prescription_field_display.dart';
 
 class PrescriptionStructuredReviewScreen extends ConsumerStatefulWidget {
   const PrescriptionStructuredReviewScreen({
@@ -46,17 +46,38 @@ class _PrescriptionStructuredReviewScreenState
         body: AppLoadingState(label: 'Restoring prescription review…'),
       );
     }
-    final unresolved = prescription!.items.where(
+    final retained = prescription!.items
+        .where((item) => item.state != PrescriptionItemState.rejected)
+        .toList(growable: false);
+    final unresolved = retained.where(
       (item) =>
-          item.state != PrescriptionItemState.readyForLookup &&
-          item.state != PrescriptionItemState.rejected,
+          !item.field(PrescriptionFieldType.medicationName).hasValue ||
+          item.fields.values.any(prescriptionFieldNeedsCheck),
     );
-    final canConfirm = prescription.items.isNotEmpty && unresolved.isEmpty;
+    final canConfirm = retained.isNotEmpty && unresolved.isEmpty;
+    final confirmedCount = retained
+        .where((item) => item.state == PrescriptionItemState.readyForLookup)
+        .length;
+    final allConfirmed = canConfirm && confirmedCount == retained.length;
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(fallbackLocation: '/scan'),
-        title: const Text('Prescription Structured Review'),
+        title: const Text('Your medicines'),
         actions: [
+          IconButton(
+            tooltip: 'Delete prescription',
+            onPressed: () async {
+              if (await deletePrescriptionWithConfirmation(
+                    context,
+                    ref,
+                    widget.prescriptionId,
+                  ) &&
+                  context.mounted) {
+                context.go('/scan');
+              }
+            },
+            icon: const Icon(Icons.delete_outline_rounded),
+          ),
           IconButton(
             tooltip: 'View raw OCR text',
             onPressed: prescription.rawOcrText == null
@@ -78,7 +99,7 @@ class _PrescriptionStructuredReviewScreenState
         children: [
           const AppBanner(
             message:
-                'Please confirm that each medicine name and displayed number matches your prescription. This app does not verify the medicine identity yet.',
+                'Check the medicine details against your prescription. Explanations describe the reference medicine; they do not confirm what was prescribed.',
             icon: Icons.warning_amber_rounded,
           ),
           if (prescription.likelyDuplicateOf != null) ...[
@@ -89,8 +110,13 @@ class _PrescriptionStructuredReviewScreenState
               icon: Icons.copy_all_outlined,
             ),
           ],
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            '$confirmedCount of ${retained.length} medicines confirmed',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           const SizedBox(height: AppSpacing.lg),
-          if (prescription.items.isEmpty)
+          if (retained.isEmpty)
             AppEmptyState(
               title: 'No medicine entries detected',
               message:
@@ -104,39 +130,40 @@ class _PrescriptionStructuredReviewScreenState
               ),
             )
           else
-            for (var index = 0; index < prescription.items.length; index++) ...[
+            for (var index = 0; index < retained.length; index++) ...[
               _MedicationReviewCard(
+                key: ValueKey(retained[index].id),
                 number: index + 1,
-                item: prescription.items[index],
+                item: retained[index],
                 imagePath: state.pages
                     .where(
-                      (page) =>
-                          page.pageNumber ==
-                          prescription.items[index].pageNumber,
+                      (page) => page.pageNumber == retained[index].pageNumber,
                     )
                     .firstOrNull
                     ?.localPath,
                 onEdit: () => context.push(
-                  '/prescriptions/${widget.prescriptionId}/items/${prescription.items[index].id}/edit',
+                  '/prescriptions/${widget.prescriptionId}/items/${retained[index].id}/edit',
                 ),
-                onDelete: () => _deleteItem(prescription.items[index].id),
-                onConfirmName: () async {
-                  final item = prescription.items[index];
-                  final name = item.field(PrescriptionFieldType.medicationName);
-                  if (name.ambiguous) {
-                    await _editItem(item.id);
-                    return;
-                  }
-                  await ref
-                      .read(prescriptionWorkflowControllerProvider.notifier)
-                      .confirmField(
-                        item.id,
-                        PrescriptionFieldType.medicationName,
+                onDelete: () => _deleteItem(retained[index].id),
+                onConfirmItem: () async {
+                  final item = retained[index];
+                  final notifier = ref.read(
+                    prescriptionWorkflowControllerProvider.notifier,
+                  );
+                  try {
+                    await notifier.confirmReviewedItem(item.id);
+                  } on Object {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Use Check to correct unreadable details, then confirm again.',
+                          ),
+                        ),
                       );
+                    }
+                  }
                 },
-                onConfirmItem: () => ref
-                    .read(prescriptionWorkflowControllerProvider.notifier)
-                    .confirmItem(prescription.items[index].id),
               ),
               const SizedBox(height: AppSpacing.sm),
             ],
@@ -167,12 +194,30 @@ class _PrescriptionStructuredReviewScreenState
               await ref
                   .read(prescriptionWorkflowControllerProvider.notifier)
                   .saveUnresolved();
-              if (context.mounted) context.go('/prescriptions/history');
+              if (context.mounted) {
+                context.go('/prescriptions/history');
+              }
+            },
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          AppSecondaryButton(
+            label: 'Delete prescription',
+            icon: Icons.delete_outline_rounded,
+            expand: true,
+            onPressed: () async {
+              if (await deletePrescriptionWithConfirmation(
+                    context,
+                    ref,
+                    widget.prescriptionId,
+                  ) &&
+                  context.mounted) {
+                context.go('/scan');
+              }
             },
           ),
           const SizedBox(height: AppSpacing.sm),
           AppPrimaryButton(
-            label: 'Review final confirmation',
+            label: 'Add to My Medications',
             icon: Icons.fact_check_outlined,
             expand: true,
             onPressed: canConfirm
@@ -184,19 +229,30 @@ class _PrescriptionStructuredReviewScreenState
           if (!canConfirm) ...[
             const SizedBox(height: AppSpacing.xs),
             Text(
-              'Confirm each retained medicine name before final confirmation. Optional missing fields may remain absent.',
+              'Check or correct the unclear details before adding. Fields not written on the prescription may stay empty.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
+          const SizedBox(height: AppSpacing.lg),
+          AppPrimaryButton(
+            label: 'Explain medicines',
+            icon: Icons.auto_awesome_outlined,
+            expand: true,
+            onPressed: allConfirmed
+                ? () => context.push(
+                    '/prescriptions/${widget.prescriptionId}/explanations',
+                  )
+                : null,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Confirm all medicines, then tap Explain medicines.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
         ],
       ),
-    );
-  }
-
-  Future<void> _editItem(String itemId) async {
-    await context.push(
-      '/prescriptions/${widget.prescriptionId}/items/$itemId/edit',
     );
   }
 
@@ -220,136 +276,200 @@ class _PrescriptionStructuredReviewScreenState
         ],
       ),
     );
-    if (confirmed == true) {
-      await ref
-          .read(prescriptionWorkflowControllerProvider.notifier)
-          .deleteItem(itemId);
+    if (confirmed == true && mounted) {
+      try {
+        await ref
+            .read(prescriptionWorkflowControllerProvider.notifier)
+            .deleteItem(itemId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Medicine removed from prescription')),
+          );
+        }
+      } on Object {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not remove the medicine. Please retry.'),
+            ),
+          );
+        }
+      }
     }
   }
 }
 
-class _MedicationReviewCard extends StatelessWidget {
+class _MedicationReviewCard extends StatefulWidget {
   const _MedicationReviewCard({
     required this.number,
     required this.item,
     required this.imagePath,
     required this.onEdit,
     required this.onDelete,
-    required this.onConfirmName,
     required this.onConfirmItem,
+    super.key,
   });
   final int number;
   final PrescriptionItem item;
   final String? imagePath;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
-  final VoidCallback onConfirmName;
-  final VoidCallback onConfirmItem;
+  final Future<void> Function() onConfirmItem;
+
+  @override
+  State<_MedicationReviewCard> createState() => _MedicationReviewCardState();
+}
+
+class _MedicationReviewCardState extends State<_MedicationReviewCard> {
+  bool _confirming = false;
+
+  Future<void> _confirm() async {
+    if (_confirming) return;
+    setState(() => _confirming = true);
+    try {
+      await widget.onConfirmItem();
+    } finally {
+      if (mounted) setState(() => _confirming = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final name = item.field(PrescriptionFieldType.medicationName);
-    final nameConfirmed = name.userConfirmed;
+    final item = widget.item;
+    final number = widget.number;
+    final imagePath = widget.imagePath;
+    final onEdit = widget.onEdit;
+    final onDelete = widget.onDelete;
+    final confirmed = item.state == PrescriptionItemState.readyForLookup;
     return AppCard(
-      semanticLabel: 'Possible medicine $number. Verification required.',
+      semanticLabel:
+          'Medicine $number. ${confirmed ? 'Details checked by you.' : 'Check against your prescription.'}',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Expanded(
-                child: Text(
-                  'Possible medicine $number',
-                  style: Theme.of(context).textTheme.titleLarge,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Medicine $number',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    Text(
+                      confirmed
+                          ? 'Details checked by you'
+                          : 'Check against prescription',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
                 ),
-              ),
-              ConfidenceBadge(
-                label: _stateLabel(item.state),
-                requiresVerification:
-                    item.state != PrescriptionItemState.readyForLookup,
               ),
               PopupMenuButton<String>(
                 tooltip: 'Medicine item actions',
+                enabled: !_confirming,
                 onSelected: (value) => value == 'edit' ? onEdit() : onDelete(),
-                itemBuilder: (context) => const [
+                itemBuilder: (_) => const [
                   PopupMenuItem(value: 'edit', child: Text('Edit fields')),
                   PopupMenuItem(value: 'delete', child: Text('Delete item')),
                 ],
               ),
             ],
           ),
-          if (imagePath != null && item.region != null) ...[
+          const SizedBox(height: AppSpacing.md),
+          for (final type in const [
+            PrescriptionFieldType.medicationName,
+            PrescriptionFieldType.strength,
+            PrescriptionFieldType.dosageForm,
+            PrescriptionFieldType.dose,
+            PrescriptionFieldType.frequency,
+          ]) ...[
+            _ReviewField(title: _fieldLabel(type), field: item.field(type)),
             const SizedBox(height: AppSpacing.sm),
-            SizedBox(
-              height: 100,
-              width: double.infinity,
-              child: Image.file(File(imagePath!), fit: BoxFit.cover),
-            ),
           ],
-          const SizedBox(height: AppSpacing.sm),
-          _ReviewField(
-            title: 'Medicine name',
-            field: name,
-            numericSafety: false,
-          ),
-          if (name.machineNormalizedValue != null) ...[
-            const SizedBox(height: AppSpacing.xs),
-            AppBanner(
-              message:
-                  'Possible match: ${name.machineNormalizedValue}\nOriginal: ${name.originalValue}',
-              icon: Icons.spellcheck_rounded,
-            ),
-          ],
-          const SizedBox(height: AppSpacing.sm),
-          if (!nameConfirmed)
-            AppPrimaryButton(
-              label: name.ambiguous
-                  ? 'Resolve medicine name'
-                  : 'Confirm medicine name',
-              icon: Icons.check_circle_outline_rounded,
-              onPressed: onConfirmName,
-            ),
-          const Divider(height: AppSpacing.lg),
-          for (final type in PrescriptionFieldType.values.skip(1))
-            if (item.fields[type]?.hasValue ?? false) ...[
-              _ReviewField(
-                title: _fieldLabel(type),
-                field: item.fields[type]!,
-                numericSafety:
-                    type == PrescriptionFieldType.strength ||
-                    type == PrescriptionFieldType.dose,
-              ),
+          for (final type in const [
+            PrescriptionFieldType.route,
+            PrescriptionFieldType.duration,
+            PrescriptionFieldType.instructions,
+          ])
+            if (item.field(type).hasValue) ...[
+              _ReviewField(title: _fieldLabel(type), field: item.field(type)),
               const SizedBox(height: AppSpacing.sm),
             ],
-          Row(
+          const Divider(height: AppSpacing.lg),
+          ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            title: const Text('Text from prescription'),
             children: [
-              TextButton.icon(
-                onPressed: onEdit,
-                icon: const Icon(Icons.edit_outlined),
-                label: const Text('Edit fields'),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: SelectableText(item.sourceText),
               ),
-              const Spacer(),
-              AppPrimaryButton(
-                label: 'Confirm item',
-                onPressed:
-                    nameConfirmed &&
-                        item.state != PrescriptionItemState.readyForLookup
-                    ? onConfirmItem
-                    : null,
+              if (imagePath != null)
+                SizedBox(
+                  height: 180,
+                  child: Image.file(File(imagePath), fit: BoxFit.contain),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              AppSecondaryButton(
+                label: 'Check',
+                icon: Icons.edit_outlined,
+                onPressed: _confirming ? null : onEdit,
+              ),
+              Semantics(
+                checked: confirmed,
+                label: confirmed
+                    ? 'Medicine confirmed'
+                    : 'Confirm medicine details',
+                child: FilledButton(
+                  key: ValueKey('confirm-${item.id}'),
+                  onPressed: confirmed || _confirming ? null : _confirm,
+                  style: confirmed
+                      ? FilledButton.styleFrom(
+                          disabledBackgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primaryContainer,
+                          disabledForegroundColor: Theme.of(
+                            context,
+                          ).colorScheme.onPrimaryContainer,
+                        )
+                      : null,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_confirming) ...[
+                        const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                      ] else if (confirmed) ...[
+                        const Icon(Icons.check_circle_rounded, size: 20),
+                        const SizedBox(width: AppSpacing.xs),
+                      ],
+                      const Flexible(child: Text('Confirm')),
+                    ],
+                  ),
+                ),
               ),
             ],
+          ),
+          TextButton.icon(
+            onPressed: _confirming ? null : onDelete,
+            icon: const Icon(Icons.delete_outline_rounded),
+            label: const Text('Remove medicine'),
           ),
         ],
       ),
     );
   }
-
-  static String _stateLabel(PrescriptionItemState state) => switch (state) {
-    PrescriptionItemState.readyForLookup => 'User confirmed',
-    PrescriptionItemState.edited => 'Edited · review',
-    PrescriptionItemState.unresolved => 'Unresolved',
-    _ => 'Review required',
-  };
 
   static String _fieldLabel(PrescriptionFieldType type) => switch (type) {
     PrescriptionFieldType.medicationName => 'Medicine name',
@@ -364,54 +484,45 @@ class _MedicationReviewCard extends StatelessWidget {
 }
 
 class _ReviewField extends StatelessWidget {
-  const _ReviewField({
-    required this.title,
-    required this.field,
-    required this.numericSafety,
-  });
+  const _ReviewField({required this.title, required this.field});
   final String title;
   final ParsedField field;
-  final bool numericSafety;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    label:
-        '$title. ${field.currentValue ?? 'Unresolved'}. ${field.userConfirmed ? 'Confirmed by user' : 'Needs review'}',
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: Theme.of(context).textTheme.labelLarge),
-              Text(
-                field.currentValue ?? 'Unresolved',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color:
-                      numericSafety && field.confidence != ConfidenceBand.high
-                      ? Theme.of(context).colorScheme.error
-                      : null,
-                ),
-              ),
-              if (field.ambiguous)
-                Text(
-                  field.possibleMeanings.isEmpty
-                      ? 'Meaning is ambiguous'
-                      : 'Possible meanings: ${field.possibleMeanings.join(', ')}',
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-            ],
+  Widget build(BuildContext context) {
+    final needsCheck = prescriptionFieldNeedsCheck(field);
+    final value = prescriptionFieldValue(field);
+    final explainedFrequency =
+        field.type == PrescriptionFieldType.frequency &&
+        prescriptionFrequencyMeaning(field.currentValue ?? '') != null;
+    final showAsError = needsCheck && !explainedFrequency;
+    return Semantics(
+      label:
+          '$title. $value. ${needsCheck ? 'Check against prescription.' : ''}',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.labelLarge),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: showAsError ? Theme.of(context).colorScheme.error : null,
+            ),
           ),
-        ),
-        ConfidenceBadge(
-          label: field.confidence.name,
-          requiresVerification: !field.userConfirmed,
-        ),
-      ],
-    ),
-  );
+          if (needsCheck)
+            Text(
+              prescriptionFieldCheckMessage(field, title),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: showAsError
+                    ? Theme.of(context).colorScheme.error
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 String prescriptionFieldLabel(PrescriptionFieldType type) =>
-    _MedicationReviewCard._fieldLabel(type);
+    _MedicationReviewCardState._fieldLabel(type);

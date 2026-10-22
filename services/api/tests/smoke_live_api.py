@@ -24,10 +24,11 @@ from tests import (
 
 
 class LiveClient:
-    def __init__(self, base_url: str) -> None:
+    def __init__(self, base_url: str, expected_content_version: str | None = None) -> None:
         self.http = httpx.Client(base_url=base_url, timeout=20)
         self.accounts: list[dict[str, str]] = []
         self.aliases: dict[str, str] = {}
+        self.expected_content_version = expected_content_version
 
     def request(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
         time.sleep(0.9)
@@ -75,6 +76,7 @@ class LiveClient:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", default="http://127.0.0.1:18000")
+    parser.add_argument("--expected-content-version", help="Expected installed reference version")
     args = parser.parse_args()
     if urlparse(args.url).hostname not in {"127.0.0.1", "localhost"}:
         parser.error("This smoke test accepts localhost only.")
@@ -99,7 +101,7 @@ def main() -> None:
             scenarios.append((name, function))
     failures = []
     for index, (name, function) in enumerate(scenarios, start=1):
-        client = LiveClient(args.url)
+        client = LiveClient(args.url, args.expected_content_version)
         try:
             arguments: dict[str, Any] = {"client": client}
             if "registered" in inspect.signature(function).parameters:
